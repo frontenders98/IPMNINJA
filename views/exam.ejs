@@ -1,0 +1,692 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Exam</title>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <style>
+        body {
+            background: #000000;
+            color: #ffffff;
+            font-family: 'Segoe UI', sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+        .navbar {
+            width: 100%;
+            max-width: 900px;
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 10;
+        }
+        .nav-btn {
+            background: none;
+            color: #ffffff;
+            border: none;
+            padding: 10px 20px;
+            font-size: 1em;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .nav-btn:hover {
+            color: #ffcc00;
+            transform: translateY(-2px);
+        }
+        .back-btn::before {
+            content: '← ';
+            font-size: 1.2em;
+        }
+        .goto-container {
+            position: relative;
+        }
+        .goto-dropdown {
+            display: none;
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #151515;
+            border: 1px solid #ffffff33;
+            border-radius: 10px;
+            padding: 15px;
+            max-height: 500px;
+            overflow-y: auto;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+            z-index: 20;
+            min-width: 200px;
+        }
+        .goto-section {
+            margin-bottom: 15px;
+        }
+        .goto-section h3 {
+            font-size: 1.2em;
+            margin-bottom: 10px;
+            color: #ffcc00;
+            text-transform: uppercase;
+        }
+        .goto-item {
+            padding: 10px;
+            cursor: pointer;
+            font-size: 1em;
+            transition: all 0.3s ease;
+        }
+        .goto-item:hover:not(.unattempted) {
+            background: #222222;
+            border-radius: 5px;
+        }
+        .goto-item.skipped::after {
+            content: ' ⚠';
+            color: #ffcc00;
+            font-size: 1.2em;
+        }
+        .goto-item.unattempted {
+            color: #666666;
+            cursor: not-allowed;
+        }
+        .content {
+            width: 100%;
+            max-width: 900px;
+            padding: 40px 20px;
+        }
+        .question-text {
+            color: #ffffff;
+            font-size: 1.3em;
+            text-align: left;
+            margin-bottom: 40px;
+        }
+        .va-question-box {
+            color: #ffffff;
+            font-size: 1.3em;
+            text-align: left;
+            margin-bottom: 40px;
+            background: #151515;
+            padding: 20px;
+            border: 1px solid #ffffff33;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+            transition: all 0.3s ease;
+        }
+        .va-question-box:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+        }
+        .options {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 40px;
+            margin-bottom: 30px;
+            width: 100%;
+        }
+        .option-row {
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
+        }
+        .option-btn {
+            display: flex;
+            align-items: center;
+            background: #222222;
+            color: #ffffff;
+            border: 1px solid #ffffff33;
+            border-radius: 10px;
+            padding: 25px 15px;
+            cursor: pointer;
+            font-size: 1em;
+            transition: all 0.3s ease;
+            width: 250px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        }
+        .option-btn:hover:not(.disabled) {
+            background: #333333;
+            transform: translateY(-2px);
+        }
+        .option-btn.disabled {
+            cursor: not-allowed;
+            opacity: 0.7;
+        }
+        .option-letter {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 30px;
+            height: 30px;
+            background: #151515;
+            color: #ffffff;
+            border: 2px solid #ffffff;
+            border-radius: 50%;
+            margin-right: 15px;
+            font-weight: bold;
+        }
+        .option-text {
+            flex: 1;
+            color: #ffffff;
+        }
+        .option-btn.correct {
+            background: #00cc00;
+            color: #ffffff;
+            animation: correctAnimation 0.5s ease;
+        }
+        .option-btn.correct .option-letter {
+            background: #000000;
+            color: #ffffff;
+        }
+        .option-btn.correct .option-text {
+            color: #ffffff;
+        }
+        .option-btn.wrong {
+            background: #ff3333;
+            animation: wrongAnimation 0.5s ease;
+        }
+        .option-btn.wrong .option-letter {
+            background: #151515;
+            color: #ffffff;
+        }
+        .qa-input-container {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            width: 100%;
+            margin-bottom: 30px;
+            justify-content: flex-start;
+        }
+        .qa-input {
+            background: #222222;
+            color: #ffffff;
+            border: 1px solid #ffffff33;
+            border-radius: 10px;
+            padding: 15px;
+            font-size: 1em;
+            width: 23.33%;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        }
+        .qa-input:disabled {
+            cursor: not-allowed;
+            opacity: 0.7;
+        }
+        .qa-submit-btn {
+            background: #000000;
+            color: #ffffff;
+            padding: 15px 25px;
+            border: 2px solid #ffffff;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 1em;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .qa-submit-btn:hover:not(:disabled) {
+            background: #333333;
+            transform: translateY(-2px);
+        }
+        .qa-submit-btn:disabled {
+            cursor: not-allowed;
+            opacity: 0.7;
+        }
+        @keyframes correctAnimation {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        @keyframes wrongAnimation {
+            0% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+            100% { transform: translateX(0); }
+        }
+        .feedback {
+            display: none;
+            padding: 15px 20px;
+            border-radius: 8px;
+            font-size: 1.2em;
+            margin-bottom: 40px;
+            width: 100%;
+            max-width: 900px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .feedback.correct {
+            background: #33cc33;
+            color: #ffffff;
+        }
+        .feedback.wrong {
+            background: #ff3333;
+            color: #ffffff;
+        }
+        .next-btn {
+            background: #000000;
+            color: #ffffff;
+            padding: 12px 20px;
+            border: 2px solid #ffffff;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1em;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .next-btn:hover {
+            background: #ffffff;
+            color: #000000;
+            transform: translateY(-2px);
+        }
+        .next-btn::after {
+            content: ' →';
+            font-size: 1.2em;
+        }
+        .skip-container {
+            display: flex;
+            justify-content: flex-end;
+            width: 100%;
+            max-width: 900px;
+            margin-bottom: 30px;
+        }
+        .answer-explanation {
+            display: none;
+            max-width: 900px;
+            width: 100%;
+            margin-bottom: 40px;
+            text-align: left;
+            padding: 15px;
+            background: #151515;
+            border: 1px solid #ffffff33;
+            border-radius: 10px;
+            overflow-x: hidden;
+        }
+        .correct-answer-label {
+            font-size: 1.3em;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        .correct-answer {
+            font-size: 1.3em;
+            margin-bottom: 20px;
+            word-wrap: break-word;
+        }
+        .explanation-label {
+            font-size: 1.3em;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        .explanation-text {
+            font-size: 1.3em;
+            word-wrap: break-word;
+        }
+        @media (max-width: 700px) {
+            .navbar {
+                padding: 10px;
+                flex-wrap: wrap;
+                gap: 10px;
+            }
+            .nav-btn {
+                padding: 8px 15px;
+                font-size: 0.9em;
+            }
+            .goto-dropdown {
+                top: 100%;
+                left: 50%;
+                transform: translateX(-50%);
+                width: 90%;
+                max-width: 200px;
+            }
+            .option-row {
+                flex-direction: column;
+                align-items: center;
+            }
+            .option-btn {
+                width: 100%;
+                max-width: 300px;
+            }
+            .qa-input-container {
+                flex-direction: column;
+                align-items: center;
+                gap: 20px;
+            }
+            .qa-input {
+                width: 100%;
+                max-width: 300px;
+            }
+            .qa-submit-btn {
+                width: 100%;
+                max-width: 300px;
+            }
+            .question-text, .va-question-box {
+                font-size: 1.1em;
+            }
+            .correct-answer-label,
+            .correct-answer,
+            .explanation-label,
+            .explanation-text {
+                font-size: 1.1em;
+            }
+            .feedback {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+            }
+            .next-btn {
+                width: 100%;
+                max-width: 300px;
+            }
+            .skip-container {
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="navbar">
+        <button class="nav-btn back-btn" onclick="goHome()">Back</button>
+        <div class="goto-container">
+            <button class="nav-btn" onclick="skipQuestion()">Skip</button>
+            <button class="nav-btn" onclick="toggleGoTo()">Go To</button>
+            <div class="goto-dropdown" id="goto-dropdown"></div>
+        </div>
+    </div>
+    <div class="content">
+        <div class="question-text" id="question-text" style="display: none;"></div>
+        <div class="va-question-box" id="va-question-box" style="display: none;"></div>
+        <div class="options" id="options"></div>
+        <div class="qa-input-container" id="qa-input-container" style="display: none;">
+            <input type="text" class="qa-input" id="qa-input" placeholder="Enter your answer here">
+            <button class="qa-submit-btn" id="qa-submit-btn" onclick="submitQAAnswer()">Submit</button>
+        </div>
+        <div class="skip-container" id="skip-container" style="display: none;"></div>
+        <div class="feedback" id="feedback">
+            <span id="feedback-text"></span>
+            <button class="next-btn" onclick="nextQuestion()">Next</button>
+        </div>
+        <div class="answer-explanation" id="answer-explanation">
+            <div class="correct-answer-label">Correct Answer</div>
+            <div class="correct-answer" id="correct-answer"></div>
+            <div class="explanation-label">Explanation</div>
+            <div class="explanation-text" id="explanation-text"></div>
+        </div>
+    </div>
+
+    <script>
+        let questions = <%- JSON.stringify(questions) %>;
+        let currentQuestionIndex = 0;
+        let answers = new Array(questions.length).fill(null);
+        let skipped = new Array(questions.length).fill(false);
+
+        questions = questions.sort((a, b) => {
+            if (a.type === 'QA' && b.type !== 'QA') return -1;
+            if (b.type === 'QA' && a.type !== 'QA') return 1;
+            if (a.type === 'MCQ' && b.type === 'VA') return -1;
+            if (b.type === 'MCQ' && a.type === 'VA') return 1;
+            if (a.type === 'VA' && b.type === 'VA') {
+                if (a.tags === b.tags) return a.id - b.id;
+                return (a.tags || '').localeCompare(b.tags || '');
+            }
+            return 0;
+        });
+
+        function displayQuestion() {
+            if (currentQuestionIndex >= questions.length) {
+                document.getElementById('question-text').innerHTML = 'Exam Complete!';
+                document.getElementById('question-text').style.display = 'block';
+                document.getElementById('va-question-box').style.display = 'none';
+                document.getElementById('options').innerHTML = '';
+                document.getElementById('qa-input-container').style.display = 'none';
+                document.getElementById('skip-container').style.display = 'none';
+                document.getElementById('feedback').style.display = 'none';
+                document.getElementById('answer-explanation').style.display = 'none';
+                document.getElementById('goto-dropdown').style.display = 'none';
+                return;
+            }
+
+            const q = questions[currentQuestionIndex];
+            const questionText = document.getElementById('question-text');
+            const vaQuestionBox = document.getElementById('va-question-box');
+            const optionsDiv = document.getElementById('options');
+            const qaInputContainer = document.getElementById('qa-input-container');
+            const skipContainer = document.getElementById('skip-container');
+            optionsDiv.innerHTML = '';
+
+            if (q.type === 'VA' || q.type === 'MCQ') {
+                questionText.style.display = q.type === 'MCQ' ? 'block' : 'none';
+                vaQuestionBox.style.display = q.type === 'VA' ? 'block' : 'none';
+                questionText.innerHTML = q.question;
+                vaQuestionBox.innerHTML = q.question;
+                optionsDiv.style.display = 'flex';
+                qaInputContainer.style.display = 'none';
+                skipContainer.style.display = 'none';
+
+                const options = [
+                    { letter: 'A', value: q.option_a },
+                    { letter: 'B', value: q.option_b },
+                    { letter: 'C', value: q.option_c },
+                    { letter: 'D', value: q.option_d }
+                ];
+                if (q.option_e) options.push({ letter: 'E', value: q.option_e });
+
+                const row1 = document.createElement('div');
+                row1.className = 'option-row';
+                const row2 = document.createElement('div');
+                row2.className = 'option-row';
+                const row3 = document.createElement('div');
+                row3.className = 'option-row';
+
+                options.forEach((opt, index) => {
+                    const btn = document.createElement('button');
+                    btn.className = 'option-btn';
+                    btn.innerHTML = `
+                        <span class="option-letter">${opt.letter}</span>
+                        <span class="option-text">${opt.value}</span>
+                    `;
+                    btn.onclick = () => checkAnswer(opt.letter, q.correct_answer, q.explanation, opt.value);
+                    if (answers[currentQuestionIndex]) {
+                        btn.disabled = true;
+                        btn.classList.add('disabled');
+                        if (opt.letter === q.correct_answer) btn.classList.add('correct');
+                        if (opt.letter === answers[currentQuestionIndex] && opt.letter !== q.correct_answer) btn.classList.add('wrong');
+                    }
+                    if (index < 2) row1.appendChild(btn);
+                    else if (index < 4) row2.appendChild(btn);
+                    else row3.appendChild(btn);
+                });
+
+                optionsDiv.appendChild(row1);
+                if (row2.children.length > 0) optionsDiv.appendChild(row2);
+                if (row3.children.length > 0) optionsDiv.appendChild(row3);
+            } else if (q.type === 'QA') {
+                questionText.style.display = 'block';
+                vaQuestionBox.style.display = 'none';
+                questionText.innerHTML = q.question;
+                optionsDiv.style.display = 'none';
+                qaInputContainer.style.display = 'flex';
+                skipContainer.style.display = 'none';
+                document.getElementById('qa-input').value = answers[currentQuestionIndex] || '';
+                document.getElementById('qa-input').disabled = !!answers[currentQuestionIndex];
+                document.getElementById('qa-submit-btn').disabled = !!answers[currentQuestionIndex];
+            }
+
+            document.getElementById('feedback').style.display = answers[currentQuestionIndex] ? 'flex' : 'none';
+            document.getElementById('answer-explanation').style.display = answers[currentQuestionIndex] ? 'block' : 'none';
+            if (answers[currentQuestionIndex]) {
+                updateFeedbackAndExplanation();
+            }
+
+            MathJax.typesetPromise().catch(err => console.error('MathJax error:', err));
+        }
+
+        function checkAnswer(selected, correct, explanation, selectedValue) {
+            const buttons = document.querySelectorAll('.option-btn');
+            buttons.forEach(btn => {
+                btn.disabled = true;
+                btn.classList.add('disabled');
+                if (btn.querySelector('.option-letter').textContent === correct) {
+                    btn.classList.add('correct');
+                }
+            });
+
+            answers[currentQuestionIndex] = selected;
+            skipped[currentQuestionIndex] = false;
+            const feedback = document.getElementById('feedback');
+            const feedbackText = document.getElementById('feedback-text');
+
+            const correctOption = questions[currentQuestionIndex][`option_${correct.toLowerCase()}`];
+
+            if (selected === correct) {
+                buttons.forEach(btn => {
+                    if (btn.querySelector('.option-letter').textContent === selected) {
+                        btn.classList.add('correct');
+                    }
+                });
+                feedbackText.innerHTML = 'Correct!';
+                feedback.classList.remove('wrong');
+                feedback.classList.add('correct');
+            } else {
+                buttons.forEach(btn => {
+                    if (btn.querySelector('.option-letter').textContent === selected) {
+                        btn.classList.add('wrong');
+                    }
+                });
+                feedbackText.innerHTML = 'Wrong!';
+                feedback.classList.remove('correct');
+                feedback.classList.add('wrong');
+            }
+
+            feedback.style.display = 'flex';
+            updateFeedbackAndExplanation();
+            updateGoToDropdown();
+
+            MathJax.typesetPromise().catch(err => console.error('MathJax error:', err));
+        }
+
+        function submitQAAnswer() {
+            const q = questions[currentQuestionIndex];
+            const userAnswer = document.getElementById('qa-input').value.trim();
+            const correctAnswer = q.correct_answer.trim();
+
+            answers[currentQuestionIndex] = userAnswer;
+            skipped[currentQuestionIndex] = false;
+            const feedback = document.getElementById('feedback');
+            const feedbackText = document.getElementById('feedback-text');
+
+            document.getElementById('qa-input').disabled = true;
+            document.getElementById('qa-submit-btn').disabled = true;
+
+            if (userAnswer === correctAnswer) {
+                feedbackText.innerHTML = 'Correct!';
+                feedback.classList.remove('wrong');
+                feedback.classList.add('correct');
+            } else {
+                feedbackText.innerHTML = 'Wrong!';
+                feedback.classList.remove('correct');
+                feedback.classList.add('wrong');
+            }
+
+            feedback.style.display = 'flex';
+            updateFeedbackAndExplanation();
+            updateGoToDropdown();
+
+            MathJax.typesetPromise().catch(err => console.error('MathJax error:', err));
+        }
+
+        function updateFeedbackAndExplanation() {
+            const q = questions[currentQuestionIndex];
+            const correctAnswerDiv = document.getElementById('correct-answer');
+            const explanationDiv = document.getElementById('explanation-text');
+            if (q.type === 'QA') {
+                correctAnswerDiv.innerHTML = q.correct_answer;
+            } else {
+                const correctOption = q[`option_${q.correct_answer.toLowerCase()}`];
+                correctAnswerDiv.innerHTML = `${q.correct_answer}: ${correctOption}`;
+            }
+            explanationDiv.innerHTML = q.explanation || 'No explanation provided.';
+            document.getElementById('answer-explanation').style.display = 'block';
+        }
+
+        function nextQuestion() {
+            currentQuestionIndex++;
+            displayQuestion();
+        }
+
+        function skipQuestion() {
+            if (currentQuestionIndex < questions.length - 1 && !answers[currentQuestionIndex]) {
+                skipped[currentQuestionIndex] = true;
+                currentQuestionIndex++;
+                displayQuestion();
+                updateGoToDropdown();
+            }
+        }
+
+        function goHome() {
+            window.location.href = '/index';
+        }
+
+        function toggleGoTo() {
+            const dropdown = document.getElementById('goto-dropdown');
+            if (dropdown.style.display === 'block') {
+                dropdown.style.display = 'none';
+            } else {
+                updateGoToDropdown();
+                dropdown.style.display = 'block';
+            }
+        }
+
+        function updateGoToDropdown() {
+            const dropdown = document.getElementById('goto-dropdown');
+            dropdown.innerHTML = '';
+
+            const lastAttemptedIndex = Math.max(...answers.map((a, i) => a !== null || skipped[i] ? i : -1), currentQuestionIndex);
+            const types = ['QA', 'MCQ', 'VA'];
+
+            types.forEach(type => {
+                const filteredQuestions = questions.filter(q => q.type === type);
+                if (filteredQuestions.length > 0) {
+                    const section = document.createElement('div');
+                    section.className = 'goto-section';
+                    section.innerHTML = `<h3>${type}</h3>`;
+                    filteredQuestions.forEach((q, index) => {
+                        const globalIndex = questions.indexOf(q);
+                        const item = document.createElement('div');
+                        item.className = 'goto-item';
+                        if (skipped[globalIndex]) item.classList.add('skipped');
+                        if (globalIndex > lastAttemptedIndex) item.classList.add('unattempted');
+                        item.innerHTML = `Question ${index + 1}`;
+                        if (globalIndex <= lastAttemptedIndex) {
+                            item.onclick = () => {
+                                currentQuestionIndex = globalIndex;
+                                displayQuestion();
+                                dropdown.style.display = 'none';
+                            };
+                        }
+                        section.appendChild(item);
+                    });
+                    dropdown.appendChild(section);
+                }
+            });
+        }
+
+        document.addEventListener('click', function(event) {
+            const dropdown = document.getElementById('goto-dropdown');
+            const gotoButton = document.querySelector('.nav-btn[onclick="toggleGoTo()"]');
+            if (dropdown.style.display === 'block' && !dropdown.contains(event.target) && !gotoButton.contains(event.target)) {
+                dropdown.style.display = 'none';
+            }
+        });
+
+        window.addEventListener('load', () => {
+            displayQuestion();
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,156 @@
+{
+  "modules": [
+    {
+      "id": 1,
+      "name": "Exam Mode",
+      "instructions": "Default instructions"
+    },
+    {
+      "id": 2,
+      "name": "Preparation",
+      "instructions": "Preparation\r\n"
+    }
+  ],
+  "questions": [
+    {
+      "id": 3,
+      "module_id": 1,
+      "type": "MCQ",
+      "question": "The sum of the first ten terms of a geometric progression is S1​, and the sum of the next ten terms (11th through 20th) is S2​. Find the common ratio.",
+      "option_a": "\\( \\left(\\frac{S_1}{S_2}\\right)^{\\frac{1}{10}} \\)",
+      "option_b": "\\( -\\left(\\frac{S_1}{S_2}\\right)^{\\frac{1}{10}} \\)",
+      "option_c": "\\( \\pm \\left(\\frac{S_2}{S_1}\\right)^{\\frac{1}{10}} \\) ",
+      "option_d": "\\( \\left(\\frac{S_1}{S_2}\\right)^{\\frac{1}{5}} \\)",
+      "option_e": null,
+      "correct_answer": "A",
+      "explanation": "Biajdajsda dasda blah blah salesman edit",
+      "tags": "asd"
+    },
+    {
+      "id": 4,
+      "module_id": 2,
+      "type": "MCQ",
+      "question": "s",
+      "option_a": "s",
+      "option_b": "s",
+      "option_c": "s",
+      "option_d": "s",
+      "option_e": "s",
+      "correct_answer": "B",
+      "explanation": "s",
+      "tags": "s"
+    },
+    {
+      "id": 5,
+      "module_id": 2,
+      "type": "QA",
+      "question": "The sum of all terms of the arithmetic progression\nhaving ten terms except for the first term, is 99, and\nexcept for the sixth term, 89. Find the third term of\nthe progression if the sum of the first and the fifth\nterm is equal to 10.",
+      "option_a": null,
+      "option_b": null,
+      "option_c": null,
+      "option_d": null,
+      "option_e": null,
+      "correct_answer": "64",
+      "explanation": "Said so I",
+      "tags": "s"
+    },
+    {
+      "id": 6,
+      "module_id": 2,
+      "type": "QA",
+      "question": "The sum of the first term and the fifth term of an AP\nis 26 and the product of the second term by the\nfourth term is 160. Find the sum of the first seven\nterms of this AP.",
+      "option_a": null,
+      "option_b": null,
+      "option_c": null,
+      "option_d": null,
+      "option_e": null,
+      "correct_answer": "56",
+      "explanation": "Because I am testing the damn software",
+      "tags": null
+    },
+    {
+      "id": 8,
+      "module_id": 1,
+      "type": "MCQ",
+      "question": "asd",
+      "option_a": "asd",
+      "option_b": "asd",
+      "option_c": "asd",
+      "option_d": "asd",
+      "option_e": "asd",
+      "correct_answer": "A",
+      "explanation": "asd",
+      "tags": null
+    },
+    {
+      "id": 9,
+      "module_id": 1,
+      "type": "MCQ",
+      "question": "s",
+      "option_a": "s",
+      "option_b": "s",
+      "option_c": "s",
+      "option_d": "s",
+      "option_e": "s",
+      "correct_answer": "B",
+      "explanation": "s",
+      "tags": null
+    },
+    {
+      "id": 10,
+      "module_id": 1,
+      "type": "VA",
+      "question": "The general idea of being fit is usually assumed to be exercising regularly\nand having a healthy diet. It’s true to some extent. But this is not always the\ncase. People don’t realise that sleep also plays a crucial part when it comes\nto physical and mental well-being. It’s a restorative process, which shouldn’t\nbe negotiable.\nHectic working hours, increasing stress levels, and an unhealthy lifestyle can\ncause irregular sleep patterns. These not only disturb one’s daily routine, but\ncan also hamper one’s health, leading to lifestyle conditions like deranged\ncholesterol and diabetes. It’s a preconceived notion that cholesterol and\ndiabetes are usually genetic diseases, and unhealthy eating patterns and\nlifestyle exacerbate them. It is not generally known that sleep deprivation can\nput a person at risk of both deranged cholesterol and diabetes.\nSleep helps your body and mind repair and recharge themselves. But things\ncan go awry if one is sleep-deprived. Insomnia can generally make the body\nwork abnormally. It affects the mental and physical abilities to prepare the\nbody for the next day. It leaves the brain exhausted, affecting the natural\nfunctioning of the body.\nLack of sleep can lead to higher cholesterol and blood pressure. Sleep\ndeprivation can lower levels of leptin, a hormone that stabilises metabolism\nand appetite. This can also lead to obesity, if left unchecked. Sleep\ndeprivation has been found to raise levels of ghrelin, the hunger hormone,\nand decrease levels of leptin, the satiety hormone. That’s why people seek\nrelief in foods that raise blood sugar. The American Academy of Sleep\nMedicine recommends that adults should get a minimum of seven to eight\nhours of sleep each night. Staying up late can lead to consuming unhealthy\nsnacks and junk food high in carbs and sugar. All this increases the risk of\nType 2 diabetes and is equally connected to obesity.\nJust like any other routine, having a definite sleeping pattern can help a\nperson maintain a cycle of rest and activity. Sleeping at the same time every\nday and waking up on time will encourage quality sleep. Proper relaxation of\nbody and mind before sleeping means that one should keep the mobile\nphone aside for at least half an hour before bed. It helps if the room is dark\nand quiet. Plus, one can always read a good book or listen to soothing music\nwhich can lull one into deep sleep.\n\nQS-01. Being deprived of sleep can result in",
+      "option_a": "mental exhaustion.",
+      "option_b": "terminal illness.",
+      "option_c": "hunger satiation.",
+      "option_d": "metabolism loss",
+      "option_e": null,
+      "correct_answer": "A",
+      "explanation": "Option 1: This option is correct. The passage states that\ninsomnia can make the body work abnormally and affect mental and physical\nabilities, leaving the brain exhausted. This directly refers to mental exhaustion\ncaused by sleep deprivation.\nOption 2: This option is incorrect. The passage does not mention that sleep\ndeprivation causes terminal illness.\nOption 3: This option is incorrect. In fact, the passage states that sleep\ndeprivation increases hunger due to higher ghrelin levels.\nOption 4: This option is incorrect. Sleep deprivation affects metabolism but\ndoes not entirely lead to its &quot;loss.&quot; Instead, it disrupts metabolism and\nincreases obesity risk.",
+      "tags": "passage1"
+    },
+    {
+      "id": 11,
+      "module_id": 1,
+      "type": "VA",
+      "question": "The general idea of being fit is usually assumed to be exercising regularly\nand having a healthy diet. It’s true to some extent. But this is not always the\ncase. People don’t realise that sleep also plays a crucial part when it comes\nto physical and mental well-being. It’s a restorative process, which shouldn’t\nbe negotiable.\nHectic working hours, increasing stress levels, and an unhealthy lifestyle can\ncause irregular sleep patterns. These not only disturb one’s daily routine, but\ncan also hamper one’s health, leading to lifestyle conditions like deranged\ncholesterol and diabetes. It’s a preconceived notion that cholesterol and\ndiabetes are usually genetic diseases, and unhealthy eating patterns and\nlifestyle exacerbate them. It is not generally known that sleep deprivation can\nput a person at risk of both deranged cholesterol and diabetes.\nSleep helps your body and mind repair and recharge themselves. But things\ncan go awry if one is sleep-deprived. Insomnia can generally make the body\nwork abnormally. It affects the mental and physical abilities to prepare the\nbody for the next day. It leaves the brain exhausted, affecting the natural\nfunctioning of the body.\nLack of sleep can lead to higher cholesterol and blood pressure. Sleep\ndeprivation can lower levels of leptin, a hormone that stabilises metabolism\nand appetite. This can also lead to obesity, if left unchecked. Sleep\ndeprivation has been found to raise levels of ghrelin, the hunger hormone,\nand decrease levels of leptin, the satiety hormone. That’s why people seek\nrelief in foods that raise blood sugar. The American Academy of Sleep\nMedicine recommends that adults should get a minimum of seven to eight\nhours of sleep each night. Staying up late can lead to consuming unhealthy\nsnacks and junk food high in carbs and sugar. All this increases the risk of\nType 2 diabetes and is equally connected to obesity.\nJust like any other routine, having a definite sleeping pattern can help a\nperson maintain a cycle of rest and activity. Sleeping at the same time every\nday and waking up on time will encourage quality sleep. Proper relaxation of\nbody and mind before sleeping means that one should keep the mobile\nphone aside for at least half an hour before bed. It helps if the room is dark\nand quiet. Plus, one can always read a good book or listen to soothing music\nwhich can lull one into deep sleep.\n\nQS-02.In what way does sleep contribute to a person’s wellbeing?",
+      "option_a": "By helping the body replenish its resources.",
+      "option_b": "By adding power and strength to the muscles.",
+      "option_c": "By increasing a person’s appetite.",
+      "option_d": "By regularising a person’s daily routine.",
+      "option_e": null,
+      "correct_answer": "A",
+      "explanation": "Option 1: This option is correct. The passage states that\nsleep is a restorative process that helps the body and mind repair and\nrecharge themselves. This directly aligns with the idea of replenishing\nresources, making it the most appropriate choice.\nOption 2:This option is incorrect. The passage does not specifically mention\nmuscle strength as a direct benefit of sleep.\nOption 3: This option is incorrect. The passage states that sleep deprivation\nincreases appetite, not sleep itself.\nOption 4: This option is incorrect. While sleep patterns contribute to routine,\nthe passage primarily emphasizes replenishment and restoration as sleep’s\nmain contribution to well-being.",
+      "tags": "passage1"
+    },
+    {
+      "id": 12,
+      "module_id": 1,
+      "type": "VA",
+      "question": "<p>Read the following passage and choose the answer that is closest to each of the questions that are based on the passage</p>\n\nBananas, apples, and avocados continue to ripen <br>after they are picked.</br> Cherries, blackberries, and grapes do not. The difference between climacteric fruits (the former) and non-climacteric fruits (the latter) matters to <i>fruit</i> growers and greengrocers, who must make sure their wares are in tip-top condition when they arrive at the marketplace. But how those differences originally came about remains unclear.\n\nTwo biologists of the University of Tokyo offer a suggestion. Fruits, they observe, exist to solve a problem faced by all plants-how best to spread their progeny around. Wrapping their seeds in a sugary pulp to provide a tasty meal serves as a way to get animals to do this for them. They do, however, need to make sure that their fruits favour the animals most likely to do the distributing. The biologists propose that climacterism, or its absence, is a way to achieve this. If ground-dwelling animals are the main distributors, then the continuing ripening of fallen fruit (i.e., climacterism) is beneficial. If, by contrast, those distributors are arboreal or aerial, and so can feed on unfallen fruit, then non-climacteric fruits will do well.\n\nTo test their idea, the two researchers studied 80 varieties of fruits, and noted which animals each depended on for its propagation. 35 of these fruits, eaten by both ground-dwelling animals and arboreal or aerial animals, were non-climacteric. Further, 15 of the 19 varieties eaten principally by ground-dwellers were climacteric, while 21 of the 26 fed on by arboreal or aerial animals were non-climacteric.\n\nThat is a suggestively strong correlation. And the authors' hypothesis is fortified by other evidence. They point out that non-climacteric fruits tend to have vivid colours, especially reds and purples. This may help them to stand out amid the foliage of their parent plants, advertising their presence. Climacteric fruits are generally better camouflaged. That makes them harder to spot until they have fallen to the ground.\n\nThe main limitation of their work is that they looked at fruits eaten by people. This has probably contaminated the sample, for thousands of years of selective breeding for traits that human beings find appealing may have blurred any signal optimised by natural selection. The next step, therefore, should be the analysis of wild fruits.\n\n<b>The main point the writer makes is that fruit-bearing plants</b>\n",
+      "option_a": "Yo",
+      "option_b": "Yo",
+      "option_c": "Yo",
+      "option_d": "Yo",
+      "option_e": "Yo",
+      "correct_answer": "B",
+      "explanation": "asdasd",
+      "tags": null
+    },
+    {
+      "id": 13,
+      "module_id": 1,
+      "type": "VA",
+      "question": "<font face=\"Liberation Serif, serif\"><font size=\"4\" style=\"font-size: 14pt\"><span style=\"font-weight: normal\">The\ngeneral idea of being fit is usually assumed to be exercising\nregularly and having a healthy diet. It’s true to some extent. But\nthis is not always the case. People don’t realise that sleep also\nplays a crucial part when it comes to physical and mental well-being.\nIt’s a restorative process, which shouldn’t be negotiable.</span></font></font></p>\n<p class=\"western\" align=\"left\" style=\"line-height: 100%; margin-bottom: 0cm\">\n<font face=\"Liberation Serif, serif\"><font size=\"4\" style=\"font-size: 14pt\"><span style=\"font-weight: normal\">Hectic\nworking hours, increasing stress levels, and an unhealthy lifestyle\ncan cause irregular sleep patterns. These not only disturb one’s\ndaily routine, but can also hamper one’s health, leading to\nlifestyle conditions like deranged cholesterol and diabetes. It’s a\npreconceived notion that cholesterol and diabetes are usually genetic\ndiseases, and unhealthy eating patterns and lifestyle exacerbate\nthem. It is not generally known that sleep deprivation can put a\nperson at risk of both deranged cholesterol and diabetes.</span></font></font></p>\n<p class=\"western\" align=\"left\" style=\"line-height: 100%; margin-bottom: 0cm\">\n<font face=\"Liberation Serif, serif\"><font size=\"4\" style=\"font-size: 14pt\"><span style=\"font-weight: normal\">Sleep\nhelps your body and mind repair and recharge themselves. But things\ncan go awry if one is sleep-deprived. Insomnia can generally make the\nbody work abnormally. It affects the mental and physical abilities to\nprepare the body for the next day. It leaves the brain exhausted,\naffecting the natural functioning of the body.</span></font></font></p>\n<p class=\"western\" align=\"left\" style=\"line-height: 100%; margin-bottom: 0cm\">\n<font face=\"Liberation Serif, serif\"><font size=\"4\" style=\"font-size: 14pt\"><span style=\"font-weight: normal\">Lack\nof sleep can lead to higher cholesterol and blood pressure. Sleep\ndeprivation can lower levels of leptin, a hormone that stabilises\nmetabolism and appetite. This can also lead to obesity, if left\nunchecked. Sleep deprivation has been found to raise levels of\nghrelin, the hunger hormone, and decrease levels of leptin, the\nsatiety hormone. That’s why people seek relief in foods that raise\nblood sugar. The American Academy of Sleep Medicine recommends that\nadults should get a minimum of seven to eight hours of sleep each\nnight. Staying up late can lead to consuming unhealthy snacks and\njunk food high in carbs and sugar. All this increases the risk of\nType 2 diabetes and is equally connected to obesity.</span></font></font></p>\n<p class=\"western\" align=\"left\" style=\"line-height: 100%; margin-bottom: 0cm\">\n<font face=\"Liberation Serif, serif\"><font size=\"4\" style=\"font-size: 14pt\"><span style=\"font-weight: normal\">Just\nlike any other routine, having a definite sleeping pattern can help a\nperson maintain a cycle of rest and activity. Sleeping at the same\ntime every day and waking up on time will encourage quality sleep.\nProper relaxation of body and mind before sleeping means that one\nshould keep the mobile phone aside for at least half an hour before\nbed. It helps if the room is dark and quiet. Plus, one can always\nread a good book or listen to soothing music which can lull one into\ndeep sleep.</span></font></font></p>\n<p class=\"western\" align=\"left\" style=\"line-height: 100%; margin-bottom: 0cm\">\n<br/>",
+      "option_a": "sd",
+      "option_b": "sd",
+      "option_c": "sd",
+      "option_d": "asd",
+      "option_e": "as",
+      "correct_answer": "C",
+      "explanation": "asd",
+      "tags": null
+    }
+  ]
+}

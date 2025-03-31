@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Maths Exam - Modules</title>
+    <style>
+        body {
+            background: linear-gradient(135deg, #0d0d0d 0%, #1a1a1a 100%);
+            color: #ffffff;
+            font-family: 'Segoe UI', sans-serif;
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 40px 20px;
+        }
+        .container {
+            width: 90%;
+            max-width: 700px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            align-items: center;
+        }
+        
+        .exam-box {
+            background-color: #151515;
+            border: 3px solid #ffffff33;
+            padding: 30px;
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-radius: 15px;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.5);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        .exam-box:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.6);
+        }
+        .exam-left {
+            flex: 1;
+            padding-right: 30px;
+            display: flex;
+            flex-direction: column;
+        }
+        .exam-title {
+            font-size: 3.5em;
+            margin: 0 0 25px 0;
+            color: #ffffff;
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
+            font-weight: 700;
+        }
+        .exam-times {
+            display: flex;
+            justify-content: space-between;
+            max-width: 400px;
+        }
+        .time-section {
+            text-align: center;
+            margin-right: 15px;
+            position: relative;
+        }
+        .time-section span {
+            display: block;
+            color: #ffffff;
+            font-size: 1.2em;
+            text-shadow: 0 0 5px rgba(255, 255, 255, 0.2);
+            margin-bottom: 8px;
+        }
+        .time-selector {
+            position: relative;
+            width: 60px;
+            height: 40px;
+            overflow: hidden;
+            background: #222222;
+            border-radius: 20px;
+            border: 1px solid #ffffff33;
+            box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.3);
+        }
+        .time-scroll {
+            height: 100%;
+            position: relative;
+            overflow: auto;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+        }
+        .time-scroll::-webkit-scrollbar {
+            display: none;
+        }
+        .time-option {
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #ffffff;
+            font-size: 1em;
+            transition: all 0.2s ease;
+        }
+        .time-option.selected {
+            font-weight: bold;
+            color: #ffffff;
+        }
+        .time-selector:before, .time-selector:after {
+            content: '';
+            position: absolute;
+            left: 0;
+            right: 0;
+            height: 15px;
+            pointer-events: none;
+            z-index: 2;
+        }
+        .time-selector:before {
+            top: 0;
+            background: linear-gradient(to bottom, rgba(34, 34, 34, 1) 0%, rgba(34, 34, 34, 0) 100%);
+        }
+        .time-selector:after {
+            bottom: 0;
+            background: linear-gradient(to top, rgba(34, 34, 34, 1) 0%, rgba(34, 34, 34, 0) 100%);
+        }
+        .buttons-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+        }
+        .start-button, .instruction-button {
+            background: #000000;
+            color: #ffffff;
+            padding: 12px 20px;
+            border: 2px solid #ffffff;
+            border-radius: 8px;
+            font-size: 1em;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+            width: 140px;
+            text-align: center;
+            letter-spacing: 0.5px;
+        }
+        .start-button:hover, .instruction-button:hover {
+            background: #ffffff;
+            color: #000000;
+            box-shadow: 0 6px 20px rgba(255, 255, 255, 0.2);
+            transform: translateY(-2px);
+        }
+        @media (max-width: 700px) {
+            .exam-box {
+                flex-direction: column;
+                padding: 25px;
+            }
+            .exam-left {
+                padding-right: 0;
+                margin-bottom: 25px;
+                width: 100%;
+            }
+            .exam-times {
+                justify-content: space-around;
+                width: 100%;
+            }
+            .time-section {
+                margin-right: 0;
+            }
+            .buttons-container {
+                width: 100%;
+                flex-direction: row;
+                justify-content: center;
+                gap: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="action-buttons">
+            <form action="/user-logout" method="POST" style="display: inline;">
+                <button type="submit" class="start-button">Logout</button>
+            </form>
+        </div>
+        <% modules.forEach(module => { %>
+            <div class="exam-box" data-module-id="<%= module.id %>">
+                <div class="exam-left">
+                    <h1 class="exam-title"><%= module.name %></h1>
+                    <% if (module.name.startsWith('Exam Mode')) { %>
+                        <div class="exam-times">
+                            <div class="time-section">
+                                <span>QA</span>
+                                <div class="time-selector" data-section="qa">
+                                    <div class="time-scroll" id="qa-scroll-<%= module.id %>"></div>
+                                </div>
+                            </div>
+                            <div class="time-section">
+                                <span>MCQ</span>
+                                <div class="time-selector" data-section="mcq">
+                                    <div class="time-scroll" id="mcq-scroll-<%= module.id %>"></div>
+                                </div>
+                            </div>
+                            <div class="time-section">
+                                <span>VA</span>
+                                <div class="time-selector" data-section="va">
+                                    <div class="time-scroll" id="va-scroll-<%= module.id %>"></div>
+                                </div>
+                            </div>
+                        </div>
+                    <% } %>
+                </div>
+                <div class="buttons-container">
+                    <button class="start-button" onclick="startExam('<%= module.id %>')">Start Now</button>
+                    <button class="instruction-button" onclick="showInstructions('<%= module.id %>')">Instructions</button>
+                </div>
+            </div>
+        <% }) %>
+    </div>
+
+    <script>
+        const currentTimes = {};
+        const modulesData = <%- JSON.stringify(modules) %>;
+
+        modulesData.forEach(module => {
+            currentTimes[module.id] = { qa: 40, mcq: 40, va: 40 };
+            if (module.name.startsWith('Exam Mode')) {
+                const sections = ['qa', 'mcq', 'va'];
+                sections.forEach(section => {
+                    const scrollContainer = document.getElementById(`${section}-scroll-${module.id}`);
+                    if (scrollContainer) {
+                        for (let i = 1; i <= 60; i++) {
+                            const option = document.createElement('div');
+                            option.className = 'time-option';
+                            option.textContent = `${i} min`;
+                            option.dataset.value = i;
+                            if (i === currentTimes[module.id][section]) {
+                                option.classList.add('selected');
+                            }
+                            scrollContainer.appendChild(option);
+                        }
+                        setTimeout(() => {
+                            scrollToSelected(section, module.id);
+                        }, 100);
+                        scrollContainer.addEventListener('scroll', function() {
+                            handleScroll(section, module.id);
+                        });
+                    }
+                });
+            }
+        });
+
+        function scrollToSelected(section, moduleId) {
+            const scrollContainer = document.getElementById(`${section}-scroll-${moduleId}`);
+            if (scrollContainer) {
+                const selectedOption = scrollContainer.querySelector(`.time-option[data-value="${currentTimes[moduleId][section]}"]`);
+                if (selectedOption) {
+                    scrollContainer.scrollTop = selectedOption.offsetTop - 
+                        (scrollContainer.clientHeight / 2) + (selectedOption.clientHeight / 2);
+                }
+            }
+        }
+
+        function handleScroll(section, moduleId) {
+            const scrollContainer = document.getElementById(`${section}-scroll-${moduleId}`);
+            if (!scrollContainer) return;
+            const options = scrollContainer.querySelectorAll('.time-option');
+            const containerHeight = scrollContainer.clientHeight;
+            const containerCenter = scrollContainer.scrollTop + (containerHeight / 2);
+            let closestOption = null;
+            let closestDistance = Infinity;
+            options.forEach(option => {
+                const optionCenter = option.offsetTop + (option.clientHeight / 2);
+                const distance = Math.abs(containerCenter - optionCenter);
+                if (distance < closestDistance) {
+                    closestDistance = distance;
+                    closestOption = option;
+                }
+            });
+            if (closestOption) {
+                options.forEach(opt => opt.classList.remove('selected'));
+                closestOption.classList.add('selected');
+                currentTimes[moduleId][section] = parseInt(closestOption.dataset.value);
+                clearTimeout(scrollContainer.scrollTimeout);
+                scrollContainer.scrollTimeout = setTimeout(() => {
+                    scrollContainer.scrollTop = closestOption.offsetTop - 
+                        (containerHeight / 2) + (closestOption.clientHeight / 2);
+                }, 150);
+            }
+        }
+
+        function startExam(moduleId) {
+            window.location.href = `/exam/${moduleId}`;
+        }
+
+        function showInstructions(moduleId) {
+            const module = modulesData.find(m => m.id == moduleId);
+            alert(module.instructions);
+        }
+    </script>
+</body>
+</html>

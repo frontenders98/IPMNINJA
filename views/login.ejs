@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Login</title>
+    <style>
+        body {
+            background: #000000;
+            color: #ffffff;
+            font-family: 'Segoe UI', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .login-box {
+            background: #151515;
+            padding: 40px;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+            width: 300px;
+        }
+        h2 { text-align: center; margin-bottom: 20px; }
+        input {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 15px;
+            background: #333333;
+            border: 1px solid #ffffff33;
+            border-radius: 8px;
+            color: #ffffff;
+            box-sizing: border-box;
+        }
+        button {
+            width: 100%;
+            padding: 10px;
+            background: #000000;
+            color: #ffffff;
+            border: 2px solid #ffffff;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+        button:hover { background: #ffffff; color: #000000; }
+        .error { color: #ff3333; text-align: center; margin-bottom: 15px; }
+    </style>
+</head>
+<body>
+    <div class="login-box">
+        <h2>Admin Login</h2>
+        <% if (error) { %>
+            <div class="error"><%= error %></div>
+        <% } %>
+        <form method="POST" action="/admin-login"> <!-- Updated from /login -->
+            <input type="text" name="username" placeholder="Username" required>
+            <input type="password" name="password" placeholder="Password" required>
+            <button type="submit">Login</button>
+        </form>
+    </div>
+</body>
+</html>

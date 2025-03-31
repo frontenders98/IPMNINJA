@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Questions - <%= module.name %></title>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <style>
+        body {
+            background: linear-gradient(135deg, #0d0d0d 0%, #1a1a1a 100%);
+            color: #ffffff;
+            font-family: 'Segoe UI', sans-serif;
+            margin: 0;
+            padding: 40px 20px;
+        }
+        h1 { text-align: center; }
+        .section { margin-bottom: 40px; }
+        .section h2 { border-bottom: 2px solid #ffffff33; padding-bottom: 5px; }
+        .add-btn {
+            background: #000000;
+            color: #ffffff;
+            padding: 8px 16px;
+            border: 2px solid #ffffff;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+        .add-btn:hover { background: #ffffff; color: #000000; }
+        .question-item {
+            background: #151515;
+            padding: 5px 10px;
+            border-radius: 10px;
+            margin-top: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 14px;
+            height: 30px;
+            overflow: hidden;
+            white-space: nowrap;
+            text-overflow: ellipsis;
+        }
+        .question-content { 
+            flex: 1; 
+            overflow: hidden; 
+            text-overflow: ellipsis; 
+            white-space: nowrap; 
+        }
+        .question-actions { display: flex; gap: 10px; }
+        .edit-btn, .delete-btn, .preview-btn {
+            padding: 5px 10px;
+            border: 2px solid #ffffff;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        .edit-btn { background: #000000; color: #ffffff; }
+        .edit-btn:hover { background: #ffffff; color: #000000; }
+        .delete-btn { background: #ff3333; color: #ffffff; }
+        .delete-btn:hover { background: #ff6666; }
+        .preview-btn { background: #0066cc; color: #ffffff; }
+        .preview-btn:hover { background: #0099ff; }
+        .popup, .preview-popup {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .popup-content, .preview-content {
+            background: #151515;
+            padding: 20px;
+            border-radius: 10px;
+            width: 90%;
+            max-width: 600px;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.5);
+        }
+        textarea, input, select {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 15px;
+            background: #333333;
+            border: 1px solid #ffffff33;
+            border-radius: 8px;
+            color: #ffffff;
+            box-sizing: border-box;
+        }
+        textarea { min-height: 100px; resize: vertical; }
+        button {
+            padding: 10px 20px;
+            background: #000000;
+            color: #ffffff;
+            border: 2px solid #ffffff;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-right: 10px;
+        }
+        button:hover { background: #ffffff; color: #000000; }
+        .preview-question { font-size: 18px; margin-bottom: 15px; }
+        .preview-options { margin-bottom: 15px; }
+        .preview-option { margin: 5px 0; }
+        .preview-answer { color: #00cc00; font-weight: bold; }
+        .preview-explanation { font-style: italic; color: #cccccc; }
+    </style>
+</head>
+<body>
+    <h1>Questions for <%= module.name %></h1>
+
+    <div class="section">
+        <h2>QA</h2>
+        <button class="add-btn" onclick="showPopup('QA', null)">Add Question</button>
+        <% questions.filter(q => q.type === 'QA').forEach(q => { %>
+            <div class="question-item" data-id="<%= q.id %>">
+                <div class="question-content">
+                    <strong>Q:</strong> <span class="mathjax"><%= q.question %></span> 
+                    <strong>A:</strong> <span class="mathjax"><%= q.correct_answer %></span>
+                    <% if (q.explanation) { %> <strong>Exp:</strong> <span class="mathjax"><%= q.explanation %></span><% } %>
+                    <% if (q.tags) { %> <strong>Tags:</strong> <%= q.tags %><% } %>
+                </div>
+                <div class="question-actions">
+                    <button class="edit-btn" onclick='showPopup("QA", <%= JSON.stringify(q) %>)'>Edit</button>
+                    <button class="preview-btn" onclick='showPreview(<%= JSON.stringify(q) %>)'>Preview</button>
+                    <button class="delete-btn" onclick="deleteQuestion(<%= q.id %>)">Delete</button>
+                </div>
+            </div>
+        <% }) %>
+    </div>
+
+    <div class="section">
+        <h2>MCQ</h2>
+        <button class="add-btn" onclick="showPopup('MCQ', null)">Add Question</button>
+        <% questions.filter(q => q.type === 'MCQ').forEach(q => { %>
+            <div class="question-item" data-id="<%= q.id %>">
+                <div class="question-content">
+                    <strong>Q:</strong> <span class="mathjax"><%= q.question %></span> 
+                    A: <span class="mathjax"><%= q.option_a %></span> | B: <span class="mathjax"><%= q.option_b %></span> | 
+                    C: <span class="mathjax"><%= q.option_c %></span> | D: <span class="mathjax"><%= q.option_d %></span> | 
+                    E: <span class="mathjax"><%= q.option_e %></span> 
+                    <strong>Correct:</strong> <%= q.correct_answer %>
+                    <% if (q.explanation) { %> <strong>Exp:</strong> <span class="mathjax"><%= q.explanation %></span><% } %>
+                    <% if (q.tags) { %> <strong>Tags:</strong> <%= q.tags %><% } %>
+                </div>
+                <div class="question-actions">
+                    <button class="edit-btn" onclick='showPopup("MCQ", <%= JSON.stringify(q) %>)'>Edit</button>
+                    <button class="preview-btn" onclick='showPreview(<%= JSON.stringify(q) %>)'>Preview</button>
+                    <button class="delete-btn" onclick="deleteQuestion(<%= q.id %>)">Delete</button>
+                </div>
+            </div>
+        <% }) %>
+    </div>
+
+    <div class="section">
+        <h2>VA</h2>
+        <button class="add-btn" onclick="showPopup('VA', null)">Add Question</button>
+        <% questions.filter(q => q.type === 'VA').forEach(q => { %>
+            <div class="question-item" data-id="<%= q.id %>">
+                <div class="question-content">
+                    <strong>Q:</strong> <span class="mathjax"><%= q.question %></span> 
+                    A: <span class="mathjax"><%= q.option_a %></span> | B: <span class="mathjax"><%= q.option_b %></span> | 
+                    C: <span class="mathjax"><%= q.option_c %></span> | D: <span class="mathjax"><%= q.option_d %></span> | 
+                    E: <span class="mathjax"><%= q.option_e %></span> 
+                    <strong>Correct:</strong> <%= q.correct_answer %>
+                    <% if (q.explanation) { %> <strong>Exp:</strong> <span class="mathjax"><%= q.explanation %></span><% } %>
+                    <% if (q.tags) { %> <strong>Tags:</strong> <%= q.tags %><% } %>
+                </div>
+                <div class="question-actions">
+                    <button class="edit-btn" onclick='showPopup("VA", <%= JSON.stringify(q) %>)'>Edit</button>
+                    <button class="preview-btn" onclick='showPreview(<%= JSON.stringify(q) %>)'>Preview</button>
+                    <button class="delete-btn" onclick="deleteQuestion(<%= q.id %>)">Delete</button>
+                </div>
+            </div>
+        <% }) %>
+    </div>
+
+    <div class="popup" id="popup">
+        <div class="popup-content">
+            <form id="question-form" method="POST">
+                <input type="hidden" name="type" id="question-type">
+                <input type="hidden" name="id" id="question-id">
+                <textarea name="question" id="question-text" placeholder="Question (LaTeX: \(x^2\))" required></textarea>
+                <div id="mcq-va-options" style="display: none;">
+                    <input type="text" name="option_a" id="option_a" placeholder="Option A (LaTeX)">
+                    <input type="text" name="option_b" id="option_b" placeholder="Option B (LaTeX)">
+                    <input type="text" name="option_c" id="option_c" placeholder="Option C (LaTeX)">
+                    <input type="text" name="option_d" id="option_d" placeholder="Option D (LaTeX)">
+                    <input type="text" name="option_e" id="option_e" placeholder="Option E (LaTeX)">
+                    <select name="correct_answer_mcq_va" id="correct_answer_mcq_va">
+                        <option value="">Select Correct Answer</option>
+                        <option value="A">A</option>
+                        <option value="B">B</option>
+                        <option value="C">C</option>
+                        <option value="D">D</option>
+                        <option value="E">E</option>
+                    </select>
+                </div>
+                <div id="qa-answer" style="display: none;">
+                    <textarea name="correct_answer_qa" id="correct_answer_qa" placeholder="Correct Answer (LaTeX: \(\sqrt{a}\))"></textarea>
+                </div>
+                <textarea name="explanation" id="explanation" placeholder="Explanation (LaTeX)"></textarea>
+                <input type="text" name="tags" id="tags" placeholder="Tags (comma-separated)">
+                <button type="submit">Save</button>
+                <button type="button" onclick="hidePopup()">Cancel</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="preview-popup" id="preview-popup">
+        <div class="preview-content">
+            <div id="preview-render"></div>
+            <button onclick="hidePreview()">Close</button>
+        </div>
+    </div>
+
+    <script>
+        function showPopup(type, question = null) {
+            const form = document.getElementById('question-form');
+            const moduleId = <%= module.id %>;
+            form.action = question ? `/admin/edit-question/${moduleId}/${question.id}` : `/admin/add-question/${moduleId}`;
+            document.getElementById('question-type').value = type;
+            document.getElementById('mcq-va-options').style.display = (type === 'MCQ' || type === 'VA') ? 'block' : 'none';
+            document.getElementById('qa-answer').style.display = type === 'QA' ? 'block' : 'none';
+
+            const mcqVaSelect = document.getElementById('correct_answer_mcq_va');
+            const qaTextarea = document.getElementById('correct_answer_qa');
+            mcqVaSelect.required = (type === 'MCQ' || type === 'VA');
+            qaTextarea.required = type === 'QA';
+
+            if (question) {
+                document.getElementById('question-id').value = question.id;
+                document.getElementById('question-text').value = question.question;
+                document.getElementById('explanation').value = question.explanation || '';
+                document.getElementById('tags').value = question.tags || '';
+                if (type === 'QA') {
+                    document.getElementById('correct_answer_qa').value = question.correct_answer;
+                } else {
+                    document.getElementById('option_a').value = question.option_a || '';
+                    document.getElementById('option_b').value = question.option_b || '';
+                    document.getElementById('option_c').value = question.option_c || '';
+                    document.getElementById('option_d').value = question.option_d || '';
+                    document.getElementById('option_e').value = question.option_e || '';
+                    document.getElementById('correct_answer_mcq_va').value = question.correct_answer;
+                }
+            } else {
+                form.reset();
+                document.getElementById('question-id').value = '';
+            }
+
+            document.getElementById('popup').style.display = 'flex';
+        }
+
+        function hidePopup() {
+            document.getElementById('popup').style.display = 'none';
+        }
+
+        function deleteQuestion(id) {
+            if (confirm('Delete this question?')) {
+                fetch(`/admin/delete-question/<%= module.id %>/${id}`, { 
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: ''
+                })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) location.reload();
+                        else alert(data.message || 'Error deleting question');
+                    })
+                    .catch(err => console.error('Delete failed:', err));
+            }
+        }
+
+        function showPreview(question) {
+            const renderDiv = document.getElementById('preview-render');
+            let html = `<div class="preview-question">${question.question}</div>`;
+            
+            if (question.type === 'QA') {
+                html += `<div class="preview-answer">Correct Answer: ${question.correct_answer}</div>`;
+            } else {
+                html += '<div class="preview-options">';
+                if (question.option_a) html += `<div class="preview-option">A: ${question.option_a}</div>`;
+                if (question.option_b) html += `<div class="preview-option">B: ${question.option_b}</div>`;
+                if (question.option_c) html += `<div class="preview-option">C: ${question.option_c}</div>`;
+                if (question.option_d) html += `<div class="preview-option">D: ${question.option_d}</div>`;
+                if (question.option_e) html += `<div class="preview-option">E: ${question.option_e}</div>`;
+                html += `</div><div class="preview-answer">Correct Answer: ${question.correct_answer}</div>`;
+            }
+            
+            if (question.explanation) {
+                html += `<div class="preview-explanation">Explanation: ${question.explanation}</div>`;
+            }
+
+            renderDiv.innerHTML = html;
+            document.getElementById('preview-popup').style.display = 'flex';
+            MathJax.typesetPromise().catch(err => console.error('MathJax error:', err));
+        }
+
+        function hidePreview() {
+            document.getElementById('preview-popup').style.display = 'none';
+        }
+
+        document.getElementById('question-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const formData = new FormData(this);
+            const urlEncodedData = new URLSearchParams(formData).toString();
+            console.log('Submitting form data:', Object.fromEntries(formData.entries()));
+
+            try {
+                const response = await fetch(this.action, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: urlEncodedData
+                });
+
+                console.log('Response status:', response.status);
+                if (!response.ok) {
+                    const text = await response.text();
+                    throw new Error(`Server error: ${response.status} - ${text}`);
+                }
+
+                const data = await response.json();
+                console.log('Response data:', data);
+                if (data.success) {
+                    hidePopup();
+                    location.reload();
+                } else {
+                    alert(data.message || 'Error saving question');
+                }
+            } catch (err) {
+                console.error('Save failed:', err.message);
+                alert('Error saving question: ' + err.message);
+            }
+        });
+
+        window.addEventListener('load', function() {
+            MathJax.typesetPromise().catch(err => console.error('MathJax error:', err));
+        });
+    </script>
+</body>
+</html>
