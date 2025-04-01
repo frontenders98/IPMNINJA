@@ -12,7 +12,6 @@ async function initializeDatabase() {
         const client = await pool.connect();
         console.log('Connected successfully');
 
-        // Your existing table creation and user initialization code stays the same
         await client.query(`
             CREATE TABLE IF NOT EXISTS users (
                 id SERIAL PRIMARY KEY,
@@ -93,7 +92,7 @@ async function initializeDatabase() {
     }
 }
 
-// Only initialize if running locally (optional—remove for Render if Neon’s already set)
+// Skip init on Render—Neon’s already populated
 if (process.env.NODE_ENV !== 'production') {
     initializeDatabase().then(() => {
         console.log('Initialization complete');
