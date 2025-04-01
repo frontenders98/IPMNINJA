@@ -2,11 +2,8 @@ const { Pool } = require('pg');
 const bcrypt = require('bcrypt');
 
 const pool = new Pool({
-    user: 'postgres',
-    host: 'localhost',
-    database: 'exam_db',
-    password: 'CastleRock@Pennywise98',
-    port: 5432
+    connectionString: process.env.DATABASE_URL,
+    ssl: { rejectUnauthorized: false }  // Neon requires SSL
 });
 
 async function initializeDatabase() {
@@ -15,6 +12,7 @@ async function initializeDatabase() {
         const client = await pool.connect();
         console.log('Connected successfully');
 
+        // Your existing table creation and user initialization code stays the same
         await client.query(`
             CREATE TABLE IF NOT EXISTS users (
                 id SERIAL PRIMARY KEY,
@@ -95,10 +93,13 @@ async function initializeDatabase() {
     }
 }
 
-initializeDatabase().then(() => {
-    console.log('Initialization complete');
-}).catch(err => {
-    console.error('Initialization failed:', err.stack);
-});
+// Only initialize if running locally (optional—remove for Render if Neon’s already set)
+if (process.env.NODE_ENV !== 'production') {
+    initializeDatabase().then(() => {
+        console.log('Initialization complete');
+    }).catch(err => {
+        console.error('Initialization failed:', err.stack);
+    });
+}
 
 module.exports = { pool };
