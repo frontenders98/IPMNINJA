@@ -1,37 +1,42 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 const session = require('express-session');
-const MemoryStore = require('memorystore')(session);
+const MemoryStore = require('memorystore')(session); // Use memorystore for isolation
 const bcrypt = require('bcrypt');
 const { pool } = require('./db.js');
 
 const app = express();
-const port = process.env.PORT || 3000; // Render uses PORT env var
+const port = process.env.PORT || 3000;
+app.listen(port, () => console.log(`Server running on port ${port}`));
 
 app.set('view engine', 'ejs');
 app.use(express.static('public'));
 app.use(bodyParser.urlencoded({ extended: true }));
-app.use(bodyParser.json());
 
+// User session middleware with its own store
 const userSession = session({
     name: 'userSession',
-    secret: 'some-long-random-string-user-123',
+    secret: 'your-secret-key-user',
     resave: false,
     saveUninitialized: false,
-    store: new MemoryStore({ checkPeriod: 86400000 }),
-    cookie: { maxAge: 24 * 60 * 60 * 1000, secure: process.env.NODE_ENV === 'production', httpOnly: true }
+    store: new MemoryStore({ checkPeriod: 86400000 }), // 24 hours
+    cookie: { maxAge: 24 * 60 * 60 * 1000, secure: false, httpOnly: true }
 });
 
+// Admin session middleware with its own store
 const adminSession = session({
     name: 'adminSession',
-    secret: 'some-long-random-string-admin-456',
+    secret: 'your-secret-key-admin',
     resave: false,
     saveUninitialized: false,
-    store: new MemoryStore({ checkPeriod: 86400000 }),
-    cookie: { maxAge: 24 * 60 * 60 * 1000, secure: process.env.NODE_ENV === 'production', httpOnly: true }
+    store: new MemoryStore({ checkPeriod: 86400000 }), // 24 hours
+    cookie: { maxAge: 24 * 60 * 60 * 1000, secure: false, httpOnly: true }
 });
 
+// Apply user session to all routes
 app.use(userSession);
+
+// Apply admin session only to admin routes
 app.use('/admin*', adminSession);
 
 function ensureUserAuthenticated(req, res, next) {
@@ -45,7 +50,7 @@ function ensureUserAuthenticated(req, res, next) {
 
 function ensureAdminAuthenticated(req, res, next) {
     console.log('Admin auth check - Admin session:', req.session);
-    if (req.session.userId && req.session.role === 'admin') {
+    if (req.session.adminId && req.session.role === 'admin') {
         return next();
     }
     console.log('Admin not authenticated, redirecting to /admin-login');
@@ -107,7 +112,7 @@ app.post('/admin-login', async (req, res) => {
         const result = await pool.query('SELECT * FROM users WHERE username = $1 AND role = $2', [username, 'admin']);
         const user = result.rows[0];
         if (user && await bcrypt.compare(password, user.password)) {
-            req.session.userId = user.id;
+            req.session.adminId = user.id;
             req.session.role = user.role;
             console.log('Admin logged in - Admin session:', req.session);
             res.redirect('/admin');
@@ -268,88 +273,16 @@ app.post('/admin/delete-question/:moduleId/:questionId', ensureAdminAuthenticate
 
 app.get('/exam/:moduleId', ensureUserAuthenticated, async (req, res) => {
     const moduleId = parseInt(req.params.moduleId);
-    const userId = req.session.userId;
-
     try {
-        const moduleResult = await pool.query('SELECT * FROM modules WHERE id = $1', [moduleId]);
-        if (moduleResult.rows.length === 0) return res.status(404).send('Module not found');
-
-        const questionResult = await pool.query(
-            'SELECT * FROM questions WHERE module_id = $1 ORDER BY id',
-            [moduleId]
-        );
-        const questions = questionResult.rows;
-        if (questions.length === 0) return res.send('No questions in this module');
-
-        const progressResult = await pool.query(
-            'SELECT last_question_id FROM user_progress WHERE user_id = $1 AND module_id = $2',
-            [userId, moduleId]
-        );
-        let startIndex = 0;
-        if (progressResult.rows.length > 0 && progressResult.rows[0].last_question_id) {
-            const lastQuestionId = progressResult.rows[0].last_question_id;
-            startIndex = questions.findIndex(q => q.id === lastQuestionId) + 1;
-            if (startIndex >= questions.length) startIndex = 0;
-        }
-
-        console.log(`GET /exam/${moduleId} - User session:`, req.session, 'Start index:', startIndex);
-        res.render('exam', {
-            questions,
-            module: moduleResult.rows[0],
-            startIndex
-        });
+        const questionResult = await pool.query('SELECT * FROM questions WHERE module_id = $1', [moduleId]);
+        console.log(`GET /exam/${moduleId} - User session:`, req.session);
+        res.render('exam', { questions: questionResult.rows });
     } catch (err) {
         console.error('Exam fetch error:', err.stack);
         res.status(500).send('Server error');
     }
 });
 
-app.post('/exam/:moduleId/submit', ensureUserAuthenticated, async (req, res) => {
-    const moduleId = parseInt(req.params.moduleId);
-    const userId = req.session.userId;
-    const { questionId } = req.body || {};
-
-    if (!questionId) {
-        return res.status(400).json({ success: false, message: 'Missing questionId' });
-    }
-
-    try {
-        await pool.query(
-            'INSERT INTO user_progress (user_id, module_id, last_question_id, completed, updated_at) ' +
-            'VALUES ($1, $2, $3, $4, NOW()) ' +
-            'ON CONFLICT (user_id, module_id) DO UPDATE SET last_question_id = $3, updated_at = NOW()',
-            [userId, moduleId, parseInt(questionId), false]
-        );
-        res.json({ success: true });
-    } catch (err) {
-        console.error('Submit answer error:', err.stack);
-        res.status(500).json({ success: false });
-    }
-});
-
-app.post('/exam/:moduleId/redo', ensureUserAuthenticated, async (req, res) => {
-    const moduleId = parseInt(req.params.moduleId);
-    const userId = req.session.userId;
-
-    try {
-        await pool.query(
-            'UPDATE user_progress SET last_question_id = NULL, completed = FALSE, updated_at = NOW() ' +
-            'WHERE user_id = $1 AND module_id = $2',
-            [userId, moduleId]
-        );
-        console.log(`Redo module ${moduleId} for user ${userId}`);
-        res.redirect('/index');
-    } catch (err) {
-        console.error('Redo module error:', err.stack);
-        res.status(500).send('Server error');
-    }
-});
-
-pool.connect().then(() => {
-    app.listen(port, () => {
-        console.log(`Server running on http://localhost:${port}`);
-    });
-}).catch((err) => {
-    console.error('Failed to connect to database:', err.stack);
-    process.exit(1);
+app.listen(port, () => {
+    console.log(`Server running on http://localhost:${port}`);
 });
