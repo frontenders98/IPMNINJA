@@ -1,42 +1,37 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 const session = require('express-session');
-const MemoryStore = require('memorystore')(session); // Use memorystore for isolation
+const MemoryStore = require('memorystore')(session);
 const bcrypt = require('bcrypt');
 const { pool } = require('./db.js');
 
 const app = express();
 const port = process.env.PORT || 3000;
-app.listen(port, () => console.log(`Server running on port ${port}`));
 
 app.set('view engine', 'ejs');
 app.use(express.static('public'));
 app.use(bodyParser.urlencoded({ extended: true }));
+app.use(bodyParser.json());
 
-// User session middleware with its own store
 const userSession = session({
     name: 'userSession',
-    secret: 'your-secret-key-user',
+    secret: 'some-long-random-string-user-123',
     resave: false,
     saveUninitialized: false,
-    store: new MemoryStore({ checkPeriod: 86400000 }), // 24 hours
+    store: new MemoryStore({ checkPeriod: 86400000 }),
     cookie: { maxAge: 24 * 60 * 60 * 1000, secure: false, httpOnly: true }
 });
 
-// Admin session middleware with its own store
 const adminSession = session({
     name: 'adminSession',
-    secret: 'your-secret-key-admin',
+    secret: 'some-long-random-string-admin-456',
     resave: false,
     saveUninitialized: false,
-    store: new MemoryStore({ checkPeriod: 86400000 }), // 24 hours
+    store: new MemoryStore({ checkPeriod: 86400000 }),
     cookie: { maxAge: 24 * 60 * 60 * 1000, secure: false, httpOnly: true }
 });
 
-// Apply user session to all routes
 app.use(userSession);
-
-// Apply admin session only to admin routes
 app.use('/admin*', adminSession);
 
 function ensureUserAuthenticated(req, res, next) {
@@ -50,7 +45,7 @@ function ensureUserAuthenticated(req, res, next) {
 
 function ensureAdminAuthenticated(req, res, next) {
     console.log('Admin auth check - Admin session:', req.session);
-    if (req.session.adminId && req.session.role === 'admin') {
+    if (req.session.userId && req.session.role === 'admin') {
         return next();
     }
     console.log('Admin not authenticated, redirecting to /admin-login');
@@ -112,7 +107,7 @@ app.post('/admin-login', async (req, res) => {
         const result = await pool.query('SELECT * FROM users WHERE username = $1 AND role = $2', [username, 'admin']);
         const user = result.rows[0];
         if (user && await bcrypt.compare(password, user.password)) {
-            req.session.adminId = user.id;
+            req.session.userId = user.id;
             req.session.role = user.role;
             console.log('Admin logged in - Admin session:', req.session);
             res.redirect('/admin');
@@ -274,15 +269,41 @@ app.post('/admin/delete-question/:moduleId/:questionId', ensureAdminAuthenticate
 app.get('/exam/:moduleId', ensureUserAuthenticated, async (req, res) => {
     const moduleId = parseInt(req.params.moduleId);
     try {
-        const questionResult = await pool.query('SELECT * FROM questions WHERE module_id = $1', [moduleId]);
+        const moduleResult = await pool.query('SELECT * FROM modules WHERE id = $1', [moduleId]);
+        if (moduleResult.rows.length === 0) return res.status(404).send('Module not found');
+
+        const questionResult = await pool.query(
+            'SELECT * FROM questions WHERE module_id = $1 ORDER BY id',
+            [moduleId]
+        );
+        const questions = questionResult.rows;
+        if (questions.length === 0) return res.send('No questions in this module');
+
         console.log(`GET /exam/${moduleId} - User session:`, req.session);
-        res.render('exam', { questions: questionResult.rows });
+        res.render('exam', {
+            questions,
+            module: moduleResult.rows[0],
+            startIndex: 0 // No progress tracking
+        });
     } catch (err) {
         console.error('Exam fetch error:', err.stack);
         res.status(500).send('Server error');
     }
 });
 
-app.listen(port, () => {
-    console.log(`Server running on http://localhost:${port}`);
+app.post('/exam/:moduleId/submit', ensureUserAuthenticated, async (req, res) => {
+    const { questionId, answer } = req.body || {};
+    if (!questionId || !answer) {
+        return res.status(400).json({ success: false, message: 'Missing questionId or answer' });
+    }
+    res.json({ success: true }); // No DB save, just acknowledge
+});
+
+pool.connect().then(() => {
+    app.listen(port, () => {
+        console.log(`Server running on http://localhost:${port}`);
+    });
+}).catch((err) => {
+    console.error('Failed to connect to database:', err.stack);
+    process.exit(1);
 });
