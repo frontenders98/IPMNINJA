@@ -534,7 +534,7 @@
             fetch(`/exam/${moduleId}/submit`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ questionId: questions[currentQuestionIndex].id })
+                body: JSON.stringify({ questionId: questions[currentQuestionIndex].id, answer: selected })
             }).catch(err => console.error('Save progress error:', err));
 
             MathJax.typesetPromise().catch(err => console.error('MathJax error:', err));
@@ -573,7 +573,7 @@
             fetch(`/exam/${moduleId}/submit`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ questionId: q.id })
+                body: JSON.stringify({ questionId: q.id, answer: userAnswer })
             }).catch(err => console.error('Save progress error:', err));
 
             MathJax.typesetPromise().catch(err => console.error('MathJax error:', err));
