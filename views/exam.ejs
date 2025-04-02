@@ -81,9 +81,18 @@
             font-size: 1em;
             transition: all 0.3s ease;
         }
-        .goto-item:hover {
+        .goto-item:hover:not(.unattempted) {
             background: #222222;
             border-radius: 5px;
+        }
+        .goto-item.skipped::after {
+            content: ' ⚠';
+            color: #ffcc00;
+            font-size: 1.2em;
+        }
+        .goto-item.unattempted {
+            color: #666666;
+            cursor: not-allowed;
         }
         .content {
             width: 100%;
@@ -280,6 +289,13 @@
             content: ' →';
             font-size: 1.2em;
         }
+        .skip-container {
+            display: flex;
+            justify-content: flex-end;
+            width: 100%;
+            max-width: 900px;
+            margin-bottom: 30px;
+        }
         .answer-explanation {
             display: none;
             max-width: 900px;
@@ -367,6 +383,9 @@
                 width: 100%;
                 max-width: 300px;
             }
+            .skip-container {
+                justify-content: center;
+            }
         }
     </style>
 </head>
@@ -374,6 +393,7 @@
     <div class="navbar">
         <button class="nav-btn back-btn" onclick="goHome()">Back</button>
         <div class="goto-container">
+            <button class="nav-btn" onclick="skipQuestion()">Skip</button>
             <button class="nav-btn" onclick="toggleGoTo()">Go To</button>
             <div class="goto-dropdown" id="goto-dropdown"></div>
         </div>
@@ -386,6 +406,7 @@
             <input type="text" class="qa-input" id="qa-input" placeholder="Enter your answer here">
             <button class="qa-submit-btn" id="qa-submit-btn" onclick="submitQAAnswer()">Submit</button>
         </div>
+        <div class="skip-container" id="skip-container" style="display: none;"></div>
         <div class="feedback" id="feedback">
             <span id="feedback-text"></span>
             <button class="next-btn" onclick="nextQuestion()">Next</button>
@@ -400,11 +421,21 @@
 
     <script>
         let questions = <%- JSON.stringify(questions) %>;
-        let currentQuestionIndex = <%= startIndex %>;
+        let currentQuestionIndex = 0;
         let answers = new Array(questions.length).fill(null);
-        const moduleId = <%= module.id %>;
+        let skipped = new Array(questions.length).fill(false);
 
-        questions = questions.sort((a, b) => a.id - b.id); // Simple ID sort, no fancy logic
+        questions = questions.sort((a, b) => {
+            if (a.type === 'QA' && b.type !== 'QA') return -1;
+            if (b.type === 'QA' && a.type !== 'QA') return 1;
+            if (a.type === 'MCQ' && b.type === 'VA') return -1;
+            if (b.type === 'MCQ' && a.type === 'VA') return 1;
+            if (a.type === 'VA' && b.type === 'VA') {
+                if (a.tags === b.tags) return a.id - b.id;
+                return (a.tags || '').localeCompare(b.tags || '');
+            }
+            return 0;
+        });
 
         function displayQuestion() {
             if (currentQuestionIndex >= questions.length) {
@@ -413,6 +444,7 @@
                 document.getElementById('va-question-box').style.display = 'none';
                 document.getElementById('options').innerHTML = '';
                 document.getElementById('qa-input-container').style.display = 'none';
+                document.getElementById('skip-container').style.display = 'none';
                 document.getElementById('feedback').style.display = 'none';
                 document.getElementById('answer-explanation').style.display = 'none';
                 document.getElementById('goto-dropdown').style.display = 'none';
@@ -424,6 +456,7 @@
             const vaQuestionBox = document.getElementById('va-question-box');
             const optionsDiv = document.getElementById('options');
             const qaInputContainer = document.getElementById('qa-input-container');
+            const skipContainer = document.getElementById('skip-container');
             optionsDiv.innerHTML = '';
 
             if (q.type === 'VA' || q.type === 'MCQ') {
@@ -433,6 +466,7 @@
                 vaQuestionBox.innerHTML = q.question;
                 optionsDiv.style.display = 'flex';
                 qaInputContainer.style.display = 'none';
+                skipContainer.style.display = 'none';
 
                 const options = [
                     { letter: 'A', value: q.option_a },
@@ -450,18 +484,22 @@
                 row3.className = 'option-row';
 
                 options.forEach((opt, index) => {
-                    if (opt.value) { // Only show if option exists
-                        const btn = document.createElement('button');
-                        btn.className = 'option-btn';
-                        btn.innerHTML = `
-                            <span class="option-letter">${opt.letter}</span>
-                            <span class="option-text">${opt.value}</span>
-                        `;
-                        btn.onclick = () => checkAnswer(opt.letter, q.correct_answer, q.explanation);
-                        if (index < 2) row1.appendChild(btn);
-                        else if (index < 4) row2.appendChild(btn);
-                        else row3.appendChild(btn);
+                    const btn = document.createElement('button');
+                    btn.className = 'option-btn';
+                    btn.innerHTML = `
+                        <span class="option-letter">${opt.letter}</span>
+                        <span class="option-text">${opt.value}</span>
+                    `;
+                    btn.onclick = () => checkAnswer(opt.letter, q.correct_answer, q.explanation, opt.value);
+                    if (answers[currentQuestionIndex]) {
+                        btn.disabled = true;
+                        btn.classList.add('disabled');
+                        if (opt.letter === q.correct_answer) btn.classList.add('correct');
+                        if (opt.letter === answers[currentQuestionIndex] && opt.letter !== q.correct_answer) btn.classList.add('wrong');
                     }
+                    if (index < 2) row1.appendChild(btn);
+                    else if (index < 4) row2.appendChild(btn);
+                    else row3.appendChild(btn);
                 });
 
                 optionsDiv.appendChild(row1);
@@ -473,15 +511,22 @@
                 questionText.innerHTML = q.question;
                 optionsDiv.style.display = 'none';
                 qaInputContainer.style.display = 'flex';
+                skipContainer.style.display = 'none';
+                document.getElementById('qa-input').value = answers[currentQuestionIndex] || '';
+                document.getElementById('qa-input').disabled = !!answers[currentQuestionIndex];
+                document.getElementById('qa-submit-btn').disabled = !!answers[currentQuestionIndex];
             }
 
-            document.getElementById('feedback').style.display = 'none';
-            document.getElementById('answer-explanation').style.display = 'none';
+            document.getElementById('feedback').style.display = answers[currentQuestionIndex] ? 'flex' : 'none';
+            document.getElementById('answer-explanation').style.display = answers[currentQuestionIndex] ? 'block' : 'none';
+            if (answers[currentQuestionIndex]) {
+                updateFeedbackAndExplanation();
+            }
 
             MathJax.typesetPromise().catch(err => console.error('MathJax error:', err));
         }
 
-        function checkAnswer(selected, correct, explanation) {
+        function checkAnswer(selected, correct, explanation, selectedValue) {
             const buttons = document.querySelectorAll('.option-btn');
             buttons.forEach(btn => {
                 btn.disabled = true;
@@ -492,8 +537,11 @@
             });
 
             answers[currentQuestionIndex] = selected;
+            skipped[currentQuestionIndex] = false;
             const feedback = document.getElementById('feedback');
             const feedbackText = document.getElementById('feedback-text');
+
+            const correctOption = questions[currentQuestionIndex][`option_${correct.toLowerCase()}`];
 
             if (selected === correct) {
                 buttons.forEach(btn => {
@@ -516,18 +564,10 @@
             }
 
             feedback.style.display = 'flex';
-            const correctAnswerDiv = document.getElementById('correct-answer');
-            const explanationDiv = document.getElementById('explanation-text');
-            correctAnswerDiv.innerHTML = correct + ': ' + (questions[currentQuestionIndex][`option_${correct.toLowerCase()}`] || 'N/A');
-            explanationDiv.innerHTML = explanation || 'No explanation provided.';
-            document.getElementById('answer-explanation').style.display = 'block';
+            updateFeedbackAndExplanation();
             updateGoToDropdown();
 
-            fetch(`/exam/${moduleId}/submit`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ questionId: questions[currentQuestionIndex].id, answer: selected })
-            }).catch(err => console.error('Submit error:', err));
+            MathJax.typesetPromise().catch(err => console.error('MathJax error:', err));
         }
 
         function submitQAAnswer() {
@@ -536,13 +576,14 @@
             const correctAnswer = q.correct_answer.trim();
 
             answers[currentQuestionIndex] = userAnswer;
+            skipped[currentQuestionIndex] = false;
             const feedback = document.getElementById('feedback');
             const feedbackText = document.getElementById('feedback-text');
 
             document.getElementById('qa-input').disabled = true;
             document.getElementById('qa-submit-btn').disabled = true;
 
-            if (userAnswer.toLowerCase() === correctAnswer.toLowerCase()) { // Case-insensitive match
+            if (userAnswer === correctAnswer) {
                 feedbackText.innerHTML = 'Correct!';
                 feedback.classList.remove('wrong');
                 feedback.classList.add('correct');
@@ -553,23 +594,38 @@
             }
 
             feedback.style.display = 'flex';
-            const correctAnswerDiv = document.getElementById('correct-answer');
-            const explanationDiv = document.getElementById('explanation-text');
-            correctAnswerDiv.innerHTML = correctAnswer;
-            explanationDiv.innerHTML = q.explanation || 'No explanation provided.';
-            document.getElementById('answer-explanation').style.display = 'block';
+            updateFeedbackAndExplanation();
             updateGoToDropdown();
 
-            fetch(`/exam/${moduleId}/submit`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ questionId: q.id, answer: userAnswer })
-            }).catch(err => console.error('Submit error:', err));
+            MathJax.typesetPromise().catch(err => console.error('MathJax error:', err));
+        }
+
+        function updateFeedbackAndExplanation() {
+            const q = questions[currentQuestionIndex];
+            const correctAnswerDiv = document.getElementById('correct-answer');
+            const explanationDiv = document.getElementById('explanation-text');
+            if (q.type === 'QA') {
+                correctAnswerDiv.innerHTML = q.correct_answer;
+            } else {
+                const correctOption = q[`option_${q.correct_answer.toLowerCase()}`];
+                correctAnswerDiv.innerHTML = `${q.correct_answer}: ${correctOption}`;
+            }
+            explanationDiv.innerHTML = q.explanation || 'No explanation provided.';
+            document.getElementById('answer-explanation').style.display = 'block';
         }
 
         function nextQuestion() {
             currentQuestionIndex++;
             displayQuestion();
+        }
+
+        function skipQuestion() {
+            if (currentQuestionIndex < questions.length - 1 && !answers[currentQuestionIndex]) {
+                skipped[currentQuestionIndex] = true;
+                currentQuestionIndex++;
+                displayQuestion();
+                updateGoToDropdown();
+            }
         }
 
         function goHome() {
@@ -590,7 +646,9 @@
             const dropdown = document.getElementById('goto-dropdown');
             dropdown.innerHTML = '';
 
+            const lastAttemptedIndex = Math.max(...answers.map((a, i) => a !== null || skipped[i] ? i : -1), currentQuestionIndex);
             const types = ['QA', 'MCQ', 'VA'];
+
             types.forEach(type => {
                 const filteredQuestions = questions.filter(q => q.type === type);
                 if (filteredQuestions.length > 0) {
@@ -601,12 +659,16 @@
                         const globalIndex = questions.indexOf(q);
                         const item = document.createElement('div');
                         item.className = 'goto-item';
+                        if (skipped[globalIndex]) item.classList.add('skipped');
+                        if (globalIndex > lastAttemptedIndex) item.classList.add('unattempted');
                         item.innerHTML = `Question ${index + 1}`;
-                        item.onclick = () => {
-                            currentQuestionIndex = globalIndex;
-                            displayQuestion();
-                            dropdown.style.display = 'none';
-                        };
+                        if (globalIndex <= lastAttemptedIndex) {
+                            item.onclick = () => {
+                                currentQuestionIndex = globalIndex;
+                                displayQuestion();
+                                dropdown.style.display = 'none';
+                            };
+                        }
                         section.appendChild(item);
                     });
                     dropdown.appendChild(section);
