@@ -404,17 +404,7 @@
         let answers = new Array(questions.length).fill(null);
         const moduleId = <%= module.id %>;
 
-        questions = questions.sort((a, b) => {
-            if (a.type === 'QA' && b.type !== 'QA') return -1;
-            if (b.type === 'QA' && a.type !== 'QA') return 1;
-            if (a.type === 'MCQ' && b.type === 'VA') return -1;
-            if (b.type === 'MCQ' && a.type === 'VA') return 1;
-            if (a.type === 'VA' && b.type === 'VA') {
-                if (a.tags === b.tags) return a.id - b.id;
-                return (a.tags || '').localeCompare(b.tags || '');
-            }
-            return 0;
-        });
+        questions = questions.sort((a, b) => a.id - b.id); // Simple ID sort, no fancy logic
 
         function displayQuestion() {
             if (currentQuestionIndex >= questions.length) {
@@ -460,16 +450,18 @@
                 row3.className = 'option-row';
 
                 options.forEach((opt, index) => {
-                    const btn = document.createElement('button');
-                    btn.className = 'option-btn';
-                    btn.innerHTML = `
-                        <span class="option-letter">${opt.letter}</span>
-                        <span class="option-text">${opt.value}</span>
-                    `;
-                    btn.onclick = () => checkAnswer(opt.letter, q.correct_answer, q.explanation);
-                    if (index < 2) row1.appendChild(btn);
-                    else if (index < 4) row2.appendChild(btn);
-                    else row3.appendChild(btn);
+                    if (opt.value) { // Only show if option exists
+                        const btn = document.createElement('button');
+                        btn.className = 'option-btn';
+                        btn.innerHTML = `
+                            <span class="option-letter">${opt.letter}</span>
+                            <span class="option-text">${opt.value}</span>
+                        `;
+                        btn.onclick = () => checkAnswer(opt.letter, q.correct_answer, q.explanation);
+                        if (index < 2) row1.appendChild(btn);
+                        else if (index < 4) row2.appendChild(btn);
+                        else row3.appendChild(btn);
+                    }
                 });
 
                 optionsDiv.appendChild(row1);
@@ -526,7 +518,7 @@
             feedback.style.display = 'flex';
             const correctAnswerDiv = document.getElementById('correct-answer');
             const explanationDiv = document.getElementById('explanation-text');
-            correctAnswerDiv.innerHTML = `${correct}: ${questions[currentQuestionIndex][`option_${correct.toLowerCase()}`]}`;
+            correctAnswerDiv.innerHTML = correct + ': ' + (questions[currentQuestionIndex][`option_${correct.toLowerCase()}`] || 'N/A');
             explanationDiv.innerHTML = explanation || 'No explanation provided.';
             document.getElementById('answer-explanation').style.display = 'block';
             updateGoToDropdown();
@@ -535,9 +527,7 @@
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ questionId: questions[currentQuestionIndex].id, answer: selected })
-            }).catch(err => console.error('Save progress error:', err));
-
-            MathJax.typesetPromise().catch(err => console.error('MathJax error:', err));
+            }).catch(err => console.error('Submit error:', err));
         }
 
         function submitQAAnswer() {
@@ -552,7 +542,7 @@
             document.getElementById('qa-input').disabled = true;
             document.getElementById('qa-submit-btn').disabled = true;
 
-            if (userAnswer === correctAnswer) {
+            if (userAnswer.toLowerCase() === correctAnswer.toLowerCase()) { // Case-insensitive match
                 feedbackText.innerHTML = 'Correct!';
                 feedback.classList.remove('wrong');
                 feedback.classList.add('correct');
@@ -574,9 +564,7 @@
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ questionId: q.id, answer: userAnswer })
-            }).catch(err => console.error('Save progress error:', err));
-
-            MathJax.typesetPromise().catch(err => console.error('MathJax error:', err));
+            }).catch(err => console.error('Submit error:', err));
         }
 
         function nextQuestion() {
