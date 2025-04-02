@@ -283,7 +283,7 @@ app.get('/exam/:moduleId', ensureUserAuthenticated, async (req, res) => {
         res.render('exam', {
             questions,
             module: moduleResult.rows[0],
-            startIndex: 0 // No progress tracking
+            startIndex: 0
         });
     } catch (err) {
         console.error('Exam fetch error:', err.stack);
@@ -291,12 +291,13 @@ app.get('/exam/:moduleId', ensureUserAuthenticated, async (req, res) => {
     }
 });
 
-app.post('/exam/:moduleId/submit', ensureUserAuthenticated, async (req, res) => {
+app.post('/exam/:moduleId/submit', ensureUserAuthenticated, (req, res) => {
     const { questionId, answer } = req.body || {};
     if (!questionId || !answer) {
         return res.status(400).json({ success: false, message: 'Missing questionId or answer' });
     }
-    res.json({ success: true }); // No DB save, just acknowledge
+    console.log(`Submitted answer for question ${questionId}: ${answer}`);
+    res.json({ success: true });
 });
 
 pool.connect().then(() => {
