@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Details</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Roboto', sans-serif; }
+        @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap');
+        body {
+            background: #0F0F0F; /* Deeper space black */
+            color: #E0E0E0; /* Soft white for readability */
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+        .container {
+            max-width: 1200px;
+            width: 100%;
+            background: rgba(20, 20, 20, 0.95); /* Darker container */
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.7);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        .container:hover { 
+            transform: translateY(-4px); 
+            box-shadow: 0 8px 25px rgba(0, 255, 255, 0.1); /* Subtle cyan glow on hover */
+        }
+        h1 {
+            font-size: 1.8em;
+            margin-bottom: 20px;
+            text-align: center;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: #A0D8D8; /* Light cyan for headers */
+        }
+        .section { margin-bottom: 20px; }
+        .details, .stats, .answers {
+            background: rgba(25, 25, 25, 0.95); /* Even darker sections */
+            padding: 12px;
+            border-radius: 8px;
+            margin-top: 12px;
+            box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.5);
+        }
+        .details p { margin: 8px 0; font-size: 0.95em; color: #C0C0C0; }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 10px;
+            margin: 12px 0;
+        }
+        .stat-box {
+            padding: 10px;
+            background: rgba(30, 30, 30, 0.95);
+            border-radius: 6px;
+            text-align: center;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
+        }
+        .stat-box:hover {
+            background: rgba(40, 40, 40, 0.95);
+            box-shadow: 0 4px 12px rgba(0, 255, 255, 0.15);
+            transform: translateY(-2px);
+        }
+        .stat-box span { font-size: 0.9em; color: #A0A0A0; }
+        .stat-box .stat-value { font-size: 1.3em; font-weight: 600; color: #E0E0E0; }
+        .answers table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.85em; }
+        th, td { padding: 8px; text-align: left; border-bottom: 1px solid rgba(160, 160, 160, 0.1); }
+        th {
+            background: rgba(35, 35, 35, 0.95);
+            font-size: 0.9em;
+            color: #A0D8D8;
+        }
+        tr:hover { background: rgba(40, 40, 40, 0.95); }
+        .question { white-space: pre-wrap; word-break: break-word; color: #C0C0C0; }
+        .pagination {
+            margin-top: 12px;
+            text-align: center;
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+        }
+        .pagination button {
+            padding: 6px 12px;
+            background: rgba(0, 255, 255, 0.1);
+            border: none;
+            color: #A0D8D8;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.9em;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
+        }
+        .pagination button:hover {
+            background: rgba(0, 255, 255, 0.2);
+            box-shadow: 0 4px 10px rgba(0, 255, 255, 0.2);
+            transform: translateY(-1px);
+        }
+        .pagination button:disabled {
+            background: rgba(20, 20, 20, 0.95);
+            cursor: not-allowed;
+            color: #606060;
+        }
+        .actions a, .actions button {
+            padding: 6px 12px;
+            margin-right: 8px;
+            background: rgba(0, 255, 255, 0.1);
+            border: none;
+            color: #A0D8D8;
+            border-radius: 4px;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            font-size: 0.9em;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
+        }
+        .actions a:hover, .actions button:hover {
+            background: rgba(0, 255, 255, 0.2);
+            box-shadow: 0 4px 10px rgba(0, 255, 255, 0.2);
+            transform: translateY(-1px);
+        }
+
+        /* Modal Styling */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8); /* Dark overlay */
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .modal-content {
+            background: rgba(20, 20, 20, 0.95);
+            padding: 20px;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 400px;
+            box-shadow: 0 8px 30px rgba(0, 255, 255, 0.2), 0 0 15px rgba(0, 255, 255, 0.1);
+            backdrop-filter: blur(10px); /* Glassmorphism effect */
+            border: 1px solid rgba(0, 255, 255, 0.1);
+            animation: slideIn 0.3s ease-out;
+        }
+        @keyframes slideIn {
+            from { transform: translateY(-50px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        .modal-content h2 {
+            font-size: 1.5em;
+            margin-bottom: 15px;
+            color: #A0D8D8;
+            text-align: center;
+        }
+        .close {
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            font-size: 1.5em;
+            color: #A0A0A0;
+            cursor: pointer;
+            transition: color 0.3s ease;
+        }
+        .close:hover { color: #A0D8D8; }
+        .edit-form label { 
+            display: block; 
+            margin: 10px 0 5px; 
+            color: #A0A0A0; 
+            font-size: 0.9em;
+        }
+        .edit-form input, .edit-form select {
+            width: 100%;
+            padding: 8px;
+            background: rgba(30, 30, 30, 0.95);
+            border: 1px solid rgba(0, 255, 255, 0.1);
+            color: #E0E0E0;
+            border-radius: 4px;
+            transition: border-color 0.3s ease, box-shadow 0.3s ease;
+        }
+        .edit-form input:focus, .edit-form select:focus {
+            border-color: rgba(0, 255, 255, 0.3);
+            box-shadow: 0 0 8px rgba(0, 255, 255, 0.2);
+            outline: none;
+        }
+        .edit-form button[type="submit"] {
+            padding: 8px 16px;
+            background: rgba(0, 255, 255, 0.15);
+            border: none;
+            color: #A0D8D8;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 15px;
+            width: 100%;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
+        }
+        .edit-form button[type="submit"]:hover {
+            background: rgba(0, 255, 255, 0.25);
+            box-shadow: 0 4px 10px rgba(0, 255, 255, 0.2);
+            transform: translateY(-1px);
+        }
+        .error { color: #FF6B6B; margin-top: 10px; font-size: 0.9em; text-align: center; }
+        @media (max-width: 768px) {
+            .container { padding: 15px; }
+            .stats-grid { grid-template-columns: 1fr; }
+            .answers table { font-size: 0.8em; }
+            .modal-content { width: 95%; padding: 15px; }
+        }
+    </style>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+</head>
+<body>
+    <div class="container">
+        <h1>User Details</h1>
+        <div class="section details">
+            <p><strong>Username:</strong> <%= user.username %></p>
+            <p><strong>Role:</strong> <%= user.role %></p>
+            <p><strong>Last Active:</strong> <%= new Date(lastActive).toLocaleString() %></p>
+            <div class="actions">
+                <a href="/admin/overview">Back</a>
+                <a href="#" onclick="showEditModal(<%= user.id %>)">Edit</a>
+                <form action="/admin/delete-user/<%= user.id %>" method="POST" style="display:inline;">
+                    <button type="submit" onclick="return confirm('Are you sure?')">Delete</button>
+                </form>
+            </div>
+        </div>
+        <div class="section stats">
+            <h3>Today’s Stats</h3>
+            <div class="stats-grid">
+                <div class="stat-box"><span>Total Sums:</span> <div class="stat-value"><%= todayStats.total_sums %></div></div>
+                <div class="stat-box"><span>Correct:</span> <div class="stat-value"><%= todayStats.correct_sums %></div></div>
+                <div class="stat-box"><span>Wrong:</span> <div class="stat-value"><%= todayStats.wrong_sums %></div></div>
+                <div class="stat-box"><span>Not Attempted:</span> <div class="stat-value"><%= todayStats.not_attempted %></div></div>
+            </div>
+        </div>
+        <div class="section answers">
+            <h3>Answer Log</h3>
+            <% if (answers.length > 0) { %>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Question</th>
+                            <th>Answer</th>
+                            <th>Correct</th>
+                            <th>Submitted At</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <% answers.forEach(answer => { %>
+                            <tr>
+                                <td class="question" id="question-<%= answer.submitted_at %>"><%= answer.question %></td>
+                                <script>
+                                    MathJax.typesetPromise([document.getElementById('question-<%= answer.submitted_at %>')]);
+                                </script>
+                                <td><%= answer.answer || 'N/A' %></td>
+                                <td><%= answer.is_correct ? 'Yes' : answer.is_correct === false ? 'No' : 'N/A' %></td>
+                                <td><%= new Date(answer.submitted_at).toLocaleString() %></td>
+                            </tr>
+                        <% }) %>
+                    </tbody>
+                </table>
+                <div class="pagination">
+                    <button onclick="window.location.href='/admin/user/<%= user.id %>?page=<%= currentPage > 1 ? currentPage - 1 : 1 %>'" <%= currentPage === 1 ? 'disabled' : '' %>>Previous</button>
+                    <span>Page <%= currentPage %> of <%= totalPages %></span>
+                    <button onclick="window.location.href='/admin/user/<%= user.id %>?page=<%= currentPage < totalPages ? currentPage + 1 : totalPages %>'" <%= currentPage === totalPages ? 'disabled' : '' %>>Next</button>
+                </div>
+            <% } else { %>
+                <p>No answers submitted.</p>
+            <% } %>
+        </div>
+    </div>
+
+    <div id="editModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal()">×</span>
+            <h2>Edit User</h2>
+            <form id="edit-form" class="edit-form">
+                <input type="hidden" id="edit-user-id" name="userId">
+                <label for="edit-username">Username:</label>
+                <input type="text" id="edit-username" name="username" required>
+                <label for="edit-role">Role:</label>
+                <select id="edit-role" name="role" required>
+                    <option value="user">User</option>
+                    <option value="admin">Admin</option>
+                </select>
+                <label for="edit-password">New Password (leave blank to keep current):</label>
+                <input type="password" id="edit-password" name="password">
+                <button type="submit">Save</button>
+                <div id="edit-error" class="error"></div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        function showEditModal(userId) {
+            fetch(`/admin/edit-user/${userId}`)
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('edit-user-id').value = data.id;
+                    document.getElementById('edit-username').value = data.username;
+                    document.getElementById('edit-role').value = data.role;
+                    document.getElementById('edit-password').value = '';
+                    document.getElementById('edit-error').innerHTML = '';
+                    document.getElementById('editModal').style.display = 'flex';
+                })
+                .catch(error => console.error('Error fetching edit user data:', error));
+        }
+
+        function closeModal() {
+            document.getElementById('editModal').style.display = 'none';
+        }
+
+        document.getElementById('edit-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const userId = document.getElementById('edit-user-id').value;
+            const formData = new FormData(this);
+            fetch(`/admin/edit-user/${userId}`, {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    closeModal();
+                    location.reload();
+                } else {
+                    document.getElementById('edit-error').innerHTML = data.error || 'Failed to save changes';
+                }
+            })
+            .catch(error => {
+                document.getElementById('edit-error').innerHTML = 'Server error';
+                console.error('Edit error:', error);
+            });
+        });
+
+        window.addEventListener('click', function(event) {
+            const modal = document.getElementById('editModal');
+            if (event.target === modal) {
+                modal.style.display = 'none';
+            }
+        });
+
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('editModal').style.display = 'none';
+        });
+    </script>
+</body>
+</html>
