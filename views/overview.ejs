@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Overview</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Roboto', sans-serif; }
+        @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap');
+        body {
+            background: #0F0F0F; /* Deep space black */
+            color: #E0E0E0; /* Soft white */
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+        .container {
+            max-width: 1200px;
+            width: 100%;
+            background: rgba(15, 15, 15, 0.95); /* Near-pitch black */
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.8);
+            transition: transform 0.3s ease;
+        }
+        .container:hover { transform: translateY(-4px); }
+        h1 {
+            font-size: 2em;
+            margin-bottom: 20px;
+            text-align: center;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: #A0D8D8; /* Cyan accent */
+        }
+        .nav { margin-bottom: 20px; text-align: center; }
+        .nav a {
+            padding: 8px 16px;
+            background: rgba(0, 255, 255, 0.1);
+            color: #A0D8D8;
+            text-decoration: none;
+            border-radius: 4px;
+            margin: 0 10px;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
+        }
+        .nav a:hover {
+            background: rgba(0, 255, 255, 0.2);
+            box-shadow: 0 4px 10px rgba(0, 255, 255, 0.2);
+            transform: translateY(-1px);
+        }
+        .card {
+            background: rgba(20, 20, 20, 0.95); /* Darker card */
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
+            transition: transform 0.3s ease;
+        }
+        .card:hover { transform: translateY(-3px); }
+        h2 {
+            font-size: 1.3em;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #A0D8D8;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        .stat-box {
+            background: rgba(25, 25, 25, 0.95);
+            padding: 10px;
+            border-radius: 6px;
+            text-align: center;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
+        }
+        .stat-box:hover {
+            background: rgba(30, 30, 30, 0.95);
+            box-shadow: 0 4px 12px rgba(0, 255, 255, 0.15);
+            transform: translateY(-2px);
+        }
+        .stat-title { font-size: 0.9em; color: #A0A0A0; margin-bottom: 3px; }
+        .stat-value { font-size: 1.4em; font-weight: 600; color: #E0E0E0; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.9em; }
+        th, td { padding: 8px; text-align: left; border-bottom: 1px solid rgba(160, 160, 160, 0.1); }
+        th { background: rgba(30, 30, 30, 0.95); color: #A0D8D8; }
+        tr:hover { background: rgba(35, 35, 35, 0.95); }
+        .actions a, .actions button {
+            padding: 6px 12px;
+            background: rgba(0, 255, 255, 0.1);
+            border: none;
+            color: #A0D8D8;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
+        }
+        .actions a:hover, .actions button:hover {
+            background: rgba(0, 255, 255, 0.2);
+            box-shadow: 0 4px 10px rgba(0, 255, 255, 0.2);
+            transform: translateY(-1px);
+        }
+        @media (max-width: 768px) {
+            .container { padding: 10px; }
+            .stats-grid { grid-template-columns: 1fr; }
+            table { font-size: 0.85em; }
+        }
+
+        /* Modal Styling */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9); /* Darker overlay */
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .modal-content {
+            background: rgba(15, 15, 15, 0.95);
+            padding: 20px;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 400px;
+            box-shadow: 0 8px 30px rgba(0, 255, 255, 0.2), 0 0 15px rgba(0, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(0, 255, 255, 0.1);
+            animation: slideIn 0.3s ease-out;
+        }
+        @keyframes slideIn {
+            from { transform: translateY(-50px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        .modal-content h2 {
+            font-size: 1.5em;
+            margin-bottom: 15px;
+            color: #A0D8D8;
+            text-align: center;
+        }
+        .close {
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            font-size: 1.5em;
+            color: #A0A0A0;
+            cursor: pointer;
+            transition: color 0.3s ease;
+        }
+        .close:hover { color: #A0D8D8; }
+        .edit-form label { 
+            display: block; 
+            margin: 10px 0 5px; 
+            color: #A0A0A0; 
+            font-size: 0.9em;
+        }
+        .edit-form input, .edit-form select {
+            width: 100%;
+            padding: 8px;
+            background: rgba(20, 20, 20, 0.95);
+            border: 1px solid rgba(0, 255, 255, 0.1);
+            color: #E0E0E0;
+            border-radius: 4px;
+            transition: border-color 0.3s ease, box-shadow 0.3s ease;
+        }
+        .edit-form input:focus, .edit-form select:focus {
+            border-color: rgba(0, 255, 255, 0.3);
+            box-shadow: 0 0 8px rgba(0, 255, 255, 0.2);
+            outline: none;
+        }
+        .edit-form button[type="submit"] {
+            padding: 8px 16px;
+            background: rgba(0, 255, 255, 0.15);
+            border: none;
+            color: #A0D8D8;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 15px;
+            width: 100%;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
+        }
+        .edit-form button[type="submit"]:hover {
+            background: rgba(0, 255, 255, 0.25);
+            box-shadow: 0 4px 10px rgba(0, 255, 255, 0.2);
+            transform: translateY(-1px);
+        }
+        .error { color: #FF6B6B; margin-top: 10px; font-size: 0.9em; text-align: center; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Admin Overview</h1>
+        <div class="nav">
+            <a href="/admin">Back to Admin</a>
+        </div>
+        <div class="card">
+            <h2>System Stats</h2>
+            <div class="stats-grid">
+                <div class="stat-box">
+                    <div class="stat-title">Total Modules</div>
+                    <div class="stat-value"><%= totalModules %></div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-title">Total Questions</div>
+                    <div class="stat-value"><%= totalQuestions %></div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-title">Active Users</div>
+                    <div class="stat-value"><%= activeUsers %></div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-title">Total Answers</div>
+                    <div class="stat-value"><%= totalAnswers %></div>
+                </div>
+            </div>
+        </div>
+        <div class="card">
+            <h2>User Management</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Username</th>
+                        <th>Role</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <% users.forEach(user => { %>
+                        <tr>
+                            <td><%= user.id %></td>
+                            <td><%= user.username %></td>
+                            <td><%= user.role %></td>
+                            <td class="actions">
+                                <a href="/admin/user/<%= user.id %>">View</a>
+                                <a href="#" onclick="showEditModal(<%= user.id %>)">Edit</a>
+                                <form action="/admin/delete-user/<%= user.id %>" method="POST" style="display:inline;">
+                                    <button type="submit" onclick="return confirm('Are you sure?')">Delete</button>
+                                </form>
+                            </td>
+                        </tr>
+                    <% }) %>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="editModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal()">×</span>
+            <h2>Edit User</h2>
+            <form id="edit-form" class="edit-form">
+                <input type="hidden" id="edit-user-id" name="userId">
+                <label for="edit-username">Username:</label>
+                <input type="text" id="edit-username" name="username" required>
+                <label for="edit-role">Role:</label>
+                <select id="edit-role" name="role" required>
+                    <option value="user">User</option>
+                    <option value="admin">Admin</option>
+                </select>
+                <label for="edit-password">New Password (leave blank to keep current):</label>
+                <input type="password" id="edit-password" name="password">
+                <button type="submit">Save</button>
+                <div id="edit-error" class="error"></div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        function showEditModal(userId) {
+            event.preventDefault(); // Prevent default form submission
+            fetch(`/admin/edit-user/${userId}`)
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('edit-user-id').value = data.id;
+                    document.getElementById('edit-username').value = data.username;
+                    document.getElementById('edit-role').value = data.role;
+                    document.getElementById('edit-password').value = '';
+                    document.getElementById('edit-error').innerHTML = '';
+                    document.getElementById('editModal').style.display = 'flex';
+                })
+                .catch(error => console.error('Error fetching edit user data:', error));
+        }
+
+        function closeModal() {
+            document.getElementById('editModal').style.display = 'none';
+        }
+
+        document.getElementById('edit-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const userId = document.getElementById('edit-user-id').value;
+            const formData = new FormData(this);
+            fetch(`/admin/edit-user/${userId}`, {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    closeModal();
+                    location.reload();
+                } else {
+                    document.getElementById('edit-error').innerHTML = data.error || 'Failed to save changes';
+                }
+            })
+            .catch(error => {
+                document.getElementById('edit-error').innerHTML = 'Server error';
+                console.error('Edit error:', error);
+            });
+        });
+
+        window.addEventListener('click', function(event) {
+            const modal = document.getElementById('editModal');
+            if (event.target === modal) {
+                modal.style.display = 'none';
+            }
+        });
+
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('editModal').style.display = 'none';
+        });
+    </script>
+</body>
+</html>
