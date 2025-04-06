@@ -4,7 +4,7 @@ const bcrypt = require('bcrypt');
 // Configure the connection to Neon
 const pool = new Pool({
     user: 'neondb_owner',                             // Neon username
-    host: 'ep-rapid-dew-a5yppoxl-pooler.us-east-2.aws.neon.tech', // Neon host
+    host: 'ep-gentle-hall-a5mdl4q4-pooler.us-east-2.aws.neon.tech', // Neon host
     database: 'neondb',                               // Neon database name
     password: 'npg_r7Lg9tEVjRXb',                     // Neon password
     port: 5432,                                       // Default PostgreSQL port (Neon uses 5432)
