@@ -19,7 +19,7 @@ async function initializeDatabase() {
         const client = await pool.connect();
         console.log('Connected successfully');
 
-        // The rest of your schema and initialization logic remains unchanged
+        // Updated schema with time_limit in modules table
         await client.query(`
             CREATE TABLE IF NOT EXISTS users (
                 id SERIAL PRIMARY KEY,
@@ -32,7 +32,8 @@ async function initializeDatabase() {
             CREATE TABLE IF NOT EXISTS modules (
                 id SERIAL PRIMARY KEY,
                 name VARCHAR(100) NOT NULL,
-                instructions TEXT
+                instructions TEXT,
+                time_limit INTEGER  -- Added this column
             );
 
             CREATE TABLE IF NOT EXISTS questions (
