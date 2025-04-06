@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Control Matrix</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Roboto', sans-serif; }
+        body {
+            background: #000000;
+            color: #ffffff;
+            padding: 40px;
+            display: flex;
+            justify-content: center;
+        }
+        .container {
+            max-width: 1200px;
+            width: 100%;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 12px;
+            backdrop-filter: blur(6px);
+            border: 1px solid #00e6cc;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.9);
+        }
+        h2 { font-size: 1.8em; margin-bottom: 20px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #00e6cc; }
+        th { background: rgba(0, 0, 0, 0.6); text-transform: uppercase; letter-spacing: 1px; }
+        tr { transition: all 0.3s ease; }
+        tr:hover { background: rgba(0, 230, 204, 0.1); transform: scale(1.01); }
+        .actions button, .actions a {
+            padding: 8px 16px;
+            margin-right: 8px;
+            background: rgba(0, 0, 0, 0.7);
+            border: 1px solid #00e6cc;
+            border-radius: 5px;
+            color: #ffffff;
+            text-decoration: none;
+            font-size: 0.9em;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .actions button:hover, .actions a:hover {
+            background: rgba(0, 230, 204, 0.2);
+            color: #ffffff;
+            transform: translateY(-1px);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>User Control Matrix</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Username</th>
+                    <th>Role</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                <% users.forEach(user => { %>
+                    <tr>
+                        <td><%= user.id %></td>
+                        <td><%= user.username %></td>
+                        <td><%= user.role %></td>
+                        <td class="actions">
+                            <a href="/admin/user/<%= user.id %>">View</a>
+                            <a href="/admin/edit-user/<%= user.id %>">Edit</a>
+                            <form action="/admin/delete-user/<%= user.id %>" method="POST" style="display:inline;">
+                                <button type="submit" onclick="return confirm('Are you sure?')">Delete</button>
+                            </form>
+                        </td>
+                    </tr>
+                <% }) %>
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>
