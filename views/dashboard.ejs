@@ -1,1 +1,756 @@
 
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Maths Exam Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+    <style>
+        body {
+            background: #0A0E17;
+            color: #ffffff;
+            font-family: 'Segoe UI', sans-serif;
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            overflow-x: hidden;
+            position: relative;
+        }
+        .navbar {
+            background: rgba(20, 27, 31, 0.3);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 10px 20px;
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        .navbar a {
+            color: #ffffff;
+            text-decoration: none;
+            font-size: 1.1em;
+            padding: 6px 12px;
+            border-radius: 5px;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+        .navbar a:hover {
+            background: rgba(255, 255, 255, 0.1);
+            box-shadow: 0 0 15px rgba(255, 255, 255, 0.2);
+        }
+        .navbar a.active {
+            background: rgba(255, 255, 255, 0.2);
+            box-shadow: 0 0 20px rgba(255, 255, 255, 0.3);
+        }
+        .navbar a::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            width: 0;
+            height: 2px;
+            background: #ffffff;
+            transition: all 0.3s ease;
+        }
+        .navbar a:hover::after {
+            width: 50%;
+            left: 25%;
+        }
+        .dashboard-content {
+            padding: 20px;
+            display: grid;
+            grid-template-areas: 
+                "graph stats"
+                "modules strengths"
+                "peer peer";
+            grid-template-columns: 2fr 1fr;
+            grid-template-rows: auto auto auto;
+            gap: 15px;
+            position: relative;
+            z-index: 1;
+        }
+        @keyframes fadeIn {
+            0% { opacity: 0; transform: scale(0.95); }
+            100% { opacity: 1; transform: scale(1); }
+        }
+        .glass-card {
+            background: rgba(20, 27, 31, 0.4);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 15px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            padding: 15px;
+            transition: all 0.3s ease;
+        }
+        .glass-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4), 0 0 20px rgba(255, 255, 255, 0.1);
+        }
+        .graph-card {
+            grid-area: graph;
+            height: 300px; /* Fixed height for the graph card */
+        }
+        .graph-card h2 {
+            font-size: 1.3em;
+            margin: 0 0 10px 0;
+            text-shadow: 0 0 5px rgba(255, 255, 255, 0.2);
+        }
+        .graph-card .filters {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+        .graph-card .filters button {
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            padding: 6px 12px;
+            border-radius: 5px;
+            color: #ffffff;
+            cursor: pointer;
+            font-size: 0.8em;
+            transition: all 0.3s ease;
+        }
+        .graph-card .filters button.active {
+            background: rgba(255, 255, 255, 0.2);
+            box-shadow: 0 0 15px rgba(255, 255, 255, 0.3);
+        }
+        .graph-card canvas {
+            height: 220px !important; /* Fixed height for the canvas */
+            width: 100% !important;
+        }
+        .stats-card {
+            grid-area: stats;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        .circle-chart {
+            position: relative;
+            width: 150px;
+            height: 150px;
+            margin-bottom: 15px;
+        }
+        .circle-chart canvas {
+            width: 100% !important;
+            height: 100% !important;
+        }
+        .circle-chart .total {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 1.2em;
+            font-weight: bold;
+            background: rgba(20, 27, 31, 0.5);
+            backdrop-filter: blur(5px);
+            padding: 8px;
+            border-radius: 50%;
+            box-shadow: 0 0 15px rgba(255, 255, 255, 0.2);
+        }
+        .stats-details {
+            text-align: center;
+        }
+        .stats-details p {
+            margin: 3px 0;
+            font-size: 0.9em;
+            color: #cccccc;
+            text-shadow: 0 0 5px rgba(255, 255, 255, 0.2);
+        }
+        .modules-card {
+            grid-area: modules;
+        }
+        .modules-card h2 {
+            font-size: 1.3em;
+            margin: 0 0 10px 0;
+            text-shadow: 0 0 5px rgba(255, 255, 255, 0.2);
+        }
+        .modules-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .modules-table th, .modules-table td {
+            padding: 8px;
+            text-align: left;
+            font-size: 0.8em;
+        }
+        .modules-table th {
+            color: #999999;
+            font-weight: normal;
+        }
+        .modules-table tr {
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .modules-table tr:hover {
+            background: rgba(255, 255, 255, 0.05);
+            box-shadow: inset 0 0 10px rgba(255, 255, 255, 0.1);
+        }
+        .modules-table .status.completed {
+            color: #ffffff;
+            text-shadow: 0 0 5px rgba(255, 255, 255, 0.3);
+        }
+        .modules-table .status.in-progress {
+            color: #cccccc;
+            text-shadow: 0 0 5px rgba(255, 255, 255, 0.2);
+        }
+        .modules-table .status.not-started {
+            color: #666666;
+        }
+        .strengths-card {
+            grid-area: strengths;
+        }
+        .strengths-card h2 {
+            font-size: 1.3em;
+            margin: 0 0 10px 0;
+            text-shadow: 0 0 5px rgba(255, 255, 255, 0.2);
+        }
+        .strengths-card .section {
+            margin-bottom: 15px;
+        }
+        .strengths-card .section h3 {
+            font-size: 1.1em;
+            margin: 0 0 8px 0;
+            text-shadow: 0 0 5px rgba(255, 255, 255, 0.1);
+        }
+        .strengths-card .tag {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 6px 12px;
+            border-radius: 20px;
+            margin: 5px 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.3s ease;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+        .strengths-card .tag::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: all 0.5s ease;
+        }
+        .strengths-card .tag:hover::before {
+            left: 100%;
+        }
+        .strengths-card .tag:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 20px rgba(255, 255, 255, 0.2);
+        }
+        .peer-card {
+            grid-area: peer;
+        }
+        .peer-card h2 {
+            font-size: 1.3em;
+            margin: 0 0 10px 0;
+            text-shadow: 0 0 5px rgba(255, 255, 255, 0.2);
+        }
+        .peer-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .peer-table th, .peer-table td {
+            padding: 8px;
+            text-align: left;
+            font-size: 0.8em;
+        }
+        .peer-table th {
+            color: #999999;
+            font-weight: normal;
+        }
+        .peer-table tr {
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
+        }
+        .peer-table tr:hover {
+            background: rgba(255, 255, 255, 0.05);
+            box-shadow: inset 0 0 10px rgba(255, 255, 255, 0.1);
+        }
+        .peer-table .score-bar {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .peer-table .bar {
+            width: 80px;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 5px;
+            position: relative;
+            overflow: hidden;
+        }
+        .peer-table .bar-fill {
+            height: 100%;
+            background: rgba(255, 255, 255, 0.5);
+            border-radius: 5px;
+            transition: width 0.5s ease;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            transition: opacity 0.2s ease;
+        }
+        .modal-content {
+            background: rgba(20, 27, 31, 0.6);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
+            padding: 20px;
+            width: 450px;
+            max-height: 80vh;
+            overflow-y: auto;
+            position: relative;
+            animation: slideIn 0.3s ease-out forwards;
+            box-shadow: 0 0 40px rgba(255, 255, 255, 0.15), inset 0 0 15px rgba(255, 255, 255, 0.05);
+        }
+        @keyframes slideIn {
+            0% { transform: translateY(-20px); opacity: 0; }
+            100% { transform: translateY(0); opacity: 1; }
+        }
+        .modal-content h3 {
+            margin: 0 0 15px 0;
+            font-size: 1.4em;
+            text-shadow: 0 0 8px rgba(255, 255, 255, 0.3);
+            text-align: center;
+        }
+        .modal-content .close {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            font-size: 1.5em;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .modal-content .close:hover {
+            color: #ffffff;
+            text-shadow: 0 0 15px rgba(255, 255, 255, 0.5);
+            /* transform: rotate(90deg); */
+        }
+        .modal-content .summary {
+            margin-bottom: 20px;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.1);
+        }
+        .modal-content .summary p {
+            margin: 5px 0;
+            font-size: 0.95em;
+            color: #dddddd;
+            transition: all 0.2s ease;
+        }
+        .modal-content .summary p:hover {
+            color: #ffffff;
+            text-shadow: 0 0 5px rgba(255, 255, 255, 0.3);
+        }
+        .modal-content .wrong-list {
+            margin-top: 15px;
+        }
+        .modal-content .wrong-list h4 {
+            margin: 0 0 10px 0;
+            font-size: 1.1em;
+            color: #cccccc;
+            text-shadow: 0 0 5px rgba(255, 255, 255, 0.2);
+        }
+        .modal-content .wrong-list ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        .modal-content .wrong-list ul li {
+            padding: 8px;
+            background: rgba(255, 255, 255, 0.03);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            font-size: 0.9em;
+            transition: all 0.2s ease;
+        }
+        .modal-content .wrong-list ul li:hover {
+            background: rgba(255, 255, 255, 0.08);
+            box-shadow: inset 0 0 5px rgba(255, 255, 255, 0.1);
+        }
+        @media (max-width: 900px) {
+            .dashboard-content {
+                grid-template-areas: 
+                    "graph"
+                    "stats"
+                    "modules"
+                    "strengths"
+                    "peer";
+                grid-template-columns: 1fr;
+                grid-template-rows: auto auto auto auto auto;
+            }
+            .graph-card {
+                height: 250px; /* Smaller height on mobile */
+            }
+            .graph-card canvas {
+                height: 180px !important; /* Smaller canvas height on mobile */
+            }
+            .modal-content {
+                width: 90%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="navbar">
+        <a href="/index">Home</a>
+        <a href="/dashboard" class="active">Dashboard</a>
+    </div>
+    <div class="dashboard-content">
+        <div class="graph-card glass-card">
+            <h2>Sums Solved (Past Week)</h2>
+            <div class="filters">
+                <button class="active">Weekly</button>
+            </div>
+            <canvas id="dailySumsChart"></canvas>
+        </div>
+        <div class="stats-card glass-card">
+            <div class="circle-chart">
+                <canvas id="circleChart"></canvas>
+                <div class="total"><%= totalSums %></div>
+            </div>
+            <div class="stats-details">
+                <p>Correct: <%= correctSums %></p>
+                <p>Wrong: <%= wrongSums %></p>
+            </div>
+        </div>
+        <div class="modules-card glass-card">
+            <h2>Modules</h2>
+            <table class="modules-table">
+                <thead>
+                    <tr>
+                        <th>Module</th>
+                        <th>Sums</th>
+                        <th>Status</th>
+                        <th>Accuracy</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <% moduleStats.forEach(module => { %>
+                        <tr onclick="openModal(<%= module.id %>)">
+                            <td><%= module.name %></td>
+                            <td><%= module.totalSums %> / <%= module.totalQuestions %></td>
+                            <td class="status <%= module.status.toLowerCase().replace(' ', '-') %>"><%= module.status %></td>
+                            <td><%= module.accuracy %>%</td>
+                        </tr>
+                    <% }) %>
+                </tbody>
+            </table>
+        </div>
+        <div class="strengths-card glass-card">
+            <h2>Your Performance</h2>
+            <div class="section">
+                <h3>Strengths</h3>
+                <% if (strengths.length > 0) { %>
+                    <% strengths.forEach(strength => { %>
+                        <div class="tag">
+                            <span><%= strength.tag %></span>
+                            <span><%= strength.accuracy %>%</span>
+                        </div>
+                    <% }) %>
+                <% } else { %>
+                    <p>No strengths identified yet. Keep practicing!</p>
+                <% } %>
+            </div>
+            <div class="section">
+                <h3>Weaknesses</h3>
+                <% if (weaknesses.length > 0) { %>
+                    <% weaknesses.forEach(weakness => { %>
+                        <div class="tag">
+                            <span><%= weakness.tag %></span>
+                            <span><%= weakness.accuracy %>%</span>
+                        </div>
+                    <% }) %>
+                <% } else { %>
+                    <p>No weaknesses identified. You're doing great!</p>
+                <% } %>
+            </div>
+        </div>
+        <div class="peer-card glass-card">
+            <h2>Peer Comparison</h2>
+            <table class="peer-table">
+                <thead>
+                    <tr>
+                        <th>Module</th>
+                        <th>Your Score</th>
+                        <th>Peer Avg</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <% moduleStats.forEach(module => { %>
+                        <% const peerData = peerComparison.find(p => p.id === module.id); %>
+                        <% if (peerData) { %>
+                            <tr>
+                                <td><%= module.name %></td>
+                                <td>
+                                    <div class="score-bar">
+                                        <span><%= module.score %></span>
+                                        <div class="bar">
+                                            <div class="bar-fill" style="width: <%= Math.min((module.score / 100) * 100, 100) %>%;"></div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="score-bar">
+                                        <span><%= peerData.avgScore %></span>
+                                        <div class="bar">
+                                            <div class="bar-fill" style="width: <%= Math.min((peerData.avgScore / 100) * 100, 100) %>%;"></div>
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                        <% } %>
+                    <% }) %>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="moduleModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal()">x</span>
+            <h3 id="modalTitle"></h3>
+            <div class="summary" id="modalSummary"></div>
+            <div class="wrong-list" id="modalWrongList"></div>
+        </div>
+    </div>
+
+    <script>
+        console.log('Daily Sums:', <%- JSON.stringify(dailySums) %>);
+        console.log('Daily Labels:', <%- JSON.stringify(dailyLabels) %>);
+        console.log('Total Sums:', <%= totalSums %>);
+        console.log('Correct Sums:', <%= correctSums %>);
+        console.log('Wrong Sums:', <%= wrongSums %>);
+        console.log('Module Stats:', <%- JSON.stringify(moduleStats) %>);
+        const detailedModuleData = <%- detailedModuleData %>;
+        console.log('Detailed Module Data:', detailedModuleData);
+
+        // Daily Sums Chart (Line Graph)
+        const dailySumsCtx = document.getElementById('dailySumsChart').getContext('2d');
+        new Chart(dailySumsCtx, {
+            type: 'line',
+            data: {
+                labels: <%- JSON.stringify(dailyLabels) %>,
+                datasets: [{
+                    label: 'Sums Solved',
+                    data: <%- JSON.stringify(dailySums) %>,
+                    borderColor: '#ffffff',
+                    borderWidth: 2,
+                    fill: false,
+                    tension: 0.4,
+                    pointBackgroundColor: '#ffffff',
+                    pointBorderColor: 'rgba(255, 255, 255, 0.5)',
+                    pointBorderWidth: 2,
+                    pointRadius: 4,
+                    pointHoverRadius: 6,
+                    showLine: true
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: { 
+                            color: '#999999',
+                            font: { size: 10 }
+                        },
+                        grid: { 
+                            color: 'rgba(255, 255, 255, 0.05)',
+                            borderDash: [5, 5]
+                        }
+                    },
+                    x: {
+                        ticks: { 
+                            color: '#999999',
+                            font: { size: 10 }
+                        },
+                        grid: { display: false }
+                    }
+                },
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        enabled: true,
+                        backgroundColor: 'rgba(20, 27, 31, 0.9)',
+                        titleFont: { size: 12 },
+                        bodyFont: { size: 12 },
+                        padding: 10,
+                        cornerRadius: 5,
+                        borderColor: '#ffffff',
+                        borderWidth: 1,
+                        displayColors: false,
+                        mode: 'nearest',
+                        intersect: false,
+                        position: 'nearest'
+                    }
+                },
+                elements: {
+                    line: {
+                        borderJoinStyle: 'round'
+                    }
+                }
+            }
+        });
+
+        // Circle Chart (Pie Chart with Futuristic Design)
+        const circleCtx = document.getElementById('circleChart').getContext('2d');
+        new Chart(circleCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Correct', 'Wrong'],
+                datasets: [{
+                    data: [<%= correctSums %>, <%= wrongSums %>],
+                    backgroundColor: [
+                        'rgba(255, 255, 255, 0.3)',
+                        'rgba(255, 255, 255, 0.1)'
+                    ],
+                    borderColor: [
+                        'rgba(255, 255, 255, 0.8)',
+                        'rgba(255, 255, 255, 0.5)'
+                    ],
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: '70%',
+                plugins: {
+                    legend: { display: false }
+                },
+                elements: {
+                    arc: {
+                        borderWidth: 2,
+                        borderColor: 'rgba(255, 255, 255, 0.2)'
+                    }
+                }
+            },
+            plugins: [{
+                id: 'outerRing',
+                afterDraw(chart) {
+                    const ctx = chart.ctx;
+                    const width = chart.width;
+                    const height = chart.height;
+                    const centerX = width / 2;
+                    const centerY = height / 2;
+                    const outerRadius = Math.min(width, height) / 2 - 10;
+
+                    ctx.beginPath();
+                    ctx.arc(centerX, centerY, outerRadius, 0, 2 * Math.PI);
+                    ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+                    ctx.lineWidth = 2;
+                    ctx.shadowColor = 'rgba(255, 255, 255, 0.5)';
+                    ctx.shadowBlur = 20;
+                    ctx.stroke();
+                    ctx.shadowBlur = 0;
+
+                    ctx.beginPath();
+                    ctx.arc(centerX, centerY, outerRadius - 10, 0, 2 * Math.PI);
+                    ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+                    ctx.lineWidth = 1;
+                    ctx.stroke();
+                }
+            }]
+        });
+
+        // Modal Functions
+        function openModal(moduleId) {
+            const module = <%- JSON.stringify(moduleStats) %>.find(m => m.id == moduleId);
+            const details = detailedModuleData[moduleId] || [];
+            if (!module) return;
+
+            const modal = document.getElementById('moduleModal');
+            const title = document.getElementById('modalTitle');
+            const summary = document.getElementById('modalSummary');
+            const wrongList = document.getElementById('modalWrongList');
+
+            title.textContent = module.name;
+            wrongList.innerHTML = '';
+
+            const totalSums = module.totalSums;
+            const correctSums = details.filter(q => q.is_correct).length;
+            const wrongSums = details.filter(q => q.answer !== null && !q.is_correct).length;
+            const accuracy = totalSums > 0 ? Math.round((correctSums / totalSums) * 100) : 0;
+
+            if (module.name.startsWith('Exam Mode')) {
+                // Exam Mode: MCQ and QA breakdown
+                const mcqQuestions = details.filter(q => q.type === 'MCQ');
+                const qaQuestions = details.filter(q => q.type === 'QA');
+                const mcqCorrect = mcqQuestions.filter(q => q.is_correct).length;
+                const qaCorrect = qaQuestions.filter(q => q.is_correct).length;
+                const mcqWrong = mcqQuestions.filter(q => q.answer !== null && !q.is_correct).length;
+                const qaWrong = qaQuestions.filter(q => q.answer !== null && !q.is_correct).length;
+                const totalScore = (correctSums * 4) - wrongSums;
+                const cutoffScore = module.totalQuestions * 2; // Assuming 50% as cutoff (2 points avg per question)
+
+                summary.innerHTML = `
+                    <p>Total Sums: ${totalSums} / ${module.totalQuestions}</p>
+                    <p>Correct: ${correctSums}</p>
+                    <p>Wrong: ${wrongSums}</p>
+                    <p>Accuracy: ${accuracy}%</p>
+                    <p>MCQ: ${mcqCorrect} / ${mcqQuestions.length} (Wrong: ${mcqWrong})</p>
+                    <p>QA: ${qaCorrect} / ${qaQuestions.length} (Wrong: ${qaWrong})</p>
+                    <p>Total Score: ${totalScore} (Cutoff: ${cutoffScore})</p>
+                `;
+
+                const wrongQuestions = details.filter(q => q.answer !== null && !q.is_correct);
+                if (wrongQuestions.length > 0) {
+                    wrongList.innerHTML = '<h4>Wrong Answers</h4><ul>' + 
+                        wrongQuestions.map((q, i) => `<li>Question ${i + 1} (${q.type})</li>`).join('') + 
+                        '</ul>';
+                }
+            } else {
+                // Normal Mode
+                summary.innerHTML = `
+                    <p>Total Sums: ${totalSums} / ${module.totalQuestions}</p>
+                    <p>Correct: ${correctSums}</p>
+                    <p>Wrong: ${wrongSums}</p>
+                    <p>Accuracy: ${accuracy}%</p>
+                `;
+
+                const wrongQuestions = details.filter(q => q.answer !== null && !q.is_correct);
+                if (wrongQuestions.length > 0) {
+                    wrongList.innerHTML = '<h4>Wrong Answers</h4><ul>' + 
+                        wrongQuestions.map((q, i) => `<li>Question ${i + 1} (${q.type})</li>`).join('') + 
+                        '</ul>';
+                }
+            }
+
+            modal.style.opacity = '0';
+            modal.style.display = 'flex';
+            requestAnimationFrame(() => modal.style.opacity = '1');
+        }
+
+        function closeModal() {
+            const modal = document.getElementById('moduleModal');
+            modal.style.opacity = '0';
+            setTimeout(() => modal.style.display = 'none', 200);
+        }
+
+    </script>
+</body>
+</html>
