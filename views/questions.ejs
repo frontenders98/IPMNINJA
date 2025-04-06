@@ -7,7 +7,7 @@
     <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
     <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
     <style>
-        body {
+         body {
             background: linear-gradient(135deg, #0d0d0d 0%, #1a1a1a 100%);
             color: #ffffff;
             font-family: 'Segoe UI', sans-serif;
@@ -108,6 +108,38 @@
         .preview-option { margin: 5px 0; }
         .preview-answer { color: #00cc00; font-weight: bold; }
         .preview-explanation { font-style: italic; color: #cccccc; }
+        /* Existing styles unchanged */
+        .question-actions button.transfer-btn {
+            background-color: #4CAF50; /* Green for transfer */
+            color: white;
+            padding: 5px 10px;
+            margin-left: 5px;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+        .question-actions button.transfer-btn:hover {
+            background-color: #45a049;
+        }
+        #transfer-popup {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            justify-content: center;
+            align-items: center;
+        }
+        #transfer-popup .popup-content {
+            background: white;
+            padding: 20px;
+            border-radius: 5px;
+            width: 400px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
     </style>
 </head>
 <body>
@@ -127,6 +159,7 @@
                 <div class="question-actions">
                     <button class="edit-btn" onclick='showPopup("QA", <%= JSON.stringify(q) %>)'>Edit</button>
                     <button class="preview-btn" onclick='showPreview(<%= JSON.stringify(q) %>)'>Preview</button>
+                    <button class="transfer-btn" onclick="showTransferPopup(<%= q.id %>)">Transfer</button>
                     <button class="delete-btn" onclick="deleteQuestion(<%= q.id %>)">Delete</button>
                 </div>
             </div>
@@ -150,6 +183,7 @@
                 <div class="question-actions">
                     <button class="edit-btn" onclick='showPopup("MCQ", <%= JSON.stringify(q) %>)'>Edit</button>
                     <button class="preview-btn" onclick='showPreview(<%= JSON.stringify(q) %>)'>Preview</button>
+                    <button class="transfer-btn" onclick="showTransferPopup(<%= q.id %>)">Transfer</button>
                     <button class="delete-btn" onclick="deleteQuestion(<%= q.id %>)">Delete</button>
                 </div>
             </div>
@@ -173,6 +207,7 @@
                 <div class="question-actions">
                     <button class="edit-btn" onclick='showPopup("VA", <%= JSON.stringify(q) %>)'>Edit</button>
                     <button class="preview-btn" onclick='showPreview(<%= JSON.stringify(q) %>)'>Preview</button>
+                    <button class="transfer-btn" onclick="showTransferPopup(<%= q.id %>)">Transfer</button>
                     <button class="delete-btn" onclick="deleteQuestion(<%= q.id %>)">Delete</button>
                 </div>
             </div>
@@ -218,7 +253,45 @@
         </div>
     </div>
 
+    <div id="transfer-popup">
+        <div class="popup-content">
+            <h2>Transfer Question</h2>
+            <label for="target-module">Select Target Module:</label>
+            <select id="target-module" required>
+                <option value="">-- Select a Module --</option>
+                <!-- Populated dynamically -->
+            </select>
+            <label for="target-type" style="margin-top: 10px;">Select Section:</label>
+            <select id="target-type" required>
+                <option value="">-- Select a Section --</option>
+                <option value="QA">QA</option>
+                <option value="MCQ">MCQ</option>
+                <option value="VA">VA</option>
+            </select>
+            <button style="margin-top: 10px;" onclick="transferQuestion()">Transfer</button>
+            <button style="margin-top: 10px;" onclick="hideTransferPopup()">Cancel</button>
+        </div>
+    </div>
+
     <script>
+        let currentQuestionId = null;
+
+        // Fetch modules dynamically when the page loads
+        let modules = [];
+        fetch('/admin', { method: 'GET' })
+            .then(response => response.text())
+            .then(html => {
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, 'text/html');
+                const moduleElements = doc.querySelectorAll('.exam-box');
+                modules = Array.from(moduleElements).map(el => ({
+                    id: el.id.replace('module-', ''),
+                    name: el.querySelector('.exam-title').textContent
+                }));
+                // No need to populate here; we'll do it when showing the popup
+            })
+            .catch(err => console.error('Failed to fetch modules:', err));
+
         function showPopup(type, question = null) {
             const form = document.getElementById('question-form');
             const moduleId = <%= module.id %>;
@@ -260,18 +333,24 @@
         }
 
         function deleteQuestion(id) {
-            if (confirm('Delete this question?')) {
+            if (confirm('Are you sure you want to delete this question? This action cannot be undone.')) {
                 fetch(`/admin/delete-question/<%= module.id %>/${id}`, { 
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                    body: ''
+                    headers: { 'Content-Type': 'application/json' }
                 })
                     .then(response => response.json())
                     .then(data => {
-                        if (data.success) location.reload();
-                        else alert(data.message || 'Error deleting question');
+                        if (data.success) {
+                            document.querySelector(`.question-item[data-id="${id}"]`).remove();
+                            alert('Question deleted successfully');
+                        } else {
+                            alert('Failed to delete question: ' + (data.message || 'Unknown error'));
+                        }
                     })
-                    .catch(err => console.error('Delete failed:', err));
+                    .catch(err => {
+                        console.error('Delete failed:', err);
+                        alert('Error deleting question: ' + err.message);
+                    });
             }
         }
 
@@ -304,11 +383,62 @@
             document.getElementById('preview-popup').style.display = 'none';
         }
 
+        function showTransferPopup(questionId) {
+            currentQuestionId = questionId;
+            const moduleSelect = document.getElementById('target-module');
+            moduleSelect.innerHTML = '<option value="">-- Select a Module --</option>';
+            modules.forEach(mod => {
+                if (mod.id != <%= module.id %>) { // Exclude current module
+                    const option = document.createElement('option');
+                    option.value = mod.id;
+                    option.textContent = mod.name;
+                    moduleSelect.appendChild(option);
+                }
+            });
+            document.getElementById('target-type').value = '';
+            document.getElementById('transfer-popup').style.display = 'flex';
+        }
+
+        function hideTransferPopup() {
+            document.getElementById('transfer-popup').style.display = 'none';
+            currentQuestionId = null;
+        }
+
+        function transferQuestion() {
+            const targetModuleId = document.getElementById('target-module').value;
+            const targetType = document.getElementById('target-type').value;
+
+            if (!targetModuleId || !targetType) {
+                alert('Please select both a module and a section.');
+                return;
+            }
+
+            fetch(`/admin/transfer-question/${currentQuestionId}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ targetModuleId, targetType })
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        document.querySelector(`.question-item[data-id="${currentQuestionId}"]`).remove();
+                        alert('Question transferred successfully');
+                        hideTransferPopup();
+                        // Optionally redirect to the target module: window.location.href = `/admin/questions/${data.newModuleId}`;
+                    } else {
+                        alert('Failed to transfer question: ' + (data.message || 'Unknown error'));
+                    }
+                })
+                .catch(err => {
+                    console.error('Transfer failed:', err);
+                    alert('Error transferring question: ' + err.message);
+                });
+        }
+
         document.getElementById('question-form').addEventListener('submit', async function(e) {
             e.preventDefault();
             const formData = new FormData(this);
             const urlEncodedData = new URLSearchParams(formData).toString();
-            console.log('Submitting form data:', Object.fromEntries(formData.entries()));
 
             try {
                 const response = await fetch(this.action, {
@@ -317,22 +447,15 @@
                     body: urlEncodedData
                 });
 
-                console.log('Response status:', response.status);
-                if (!response.ok) {
-                    const text = await response.text();
-                    throw new Error(`Server error: ${response.status} - ${text}`);
-                }
-
                 const data = await response.json();
-                console.log('Response data:', data);
                 if (data.success) {
                     hidePopup();
                     location.reload();
                 } else {
-                    alert(data.message || 'Error saving question');
+                    alert('Failed to save question: ' + (data.message || 'Unknown error'));
                 }
             } catch (err) {
-                console.error('Save failed:', err.message);
+                console.error('Save failed:', err);
                 alert('Error saving question: ' + err.message);
             }
         });
