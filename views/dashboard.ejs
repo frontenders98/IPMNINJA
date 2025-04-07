@@ -545,167 +545,129 @@
         console.log('Module Stats:', <%- JSON.stringify(moduleStats) %>);
         const detailedModuleData = <%- detailedModuleData %>;
         console.log('Detailed Module Data:', detailedModuleData);
-
-        // Daily Sums Chart (Line Graph)
+    
+        // Daily Sums Chart
         const dailySumsCtx = document.getElementById('dailySumsChart').getContext('2d');
-        new Chart(dailySumsCtx, {
-            type: 'line',
-            data: {
-                labels: <%- JSON.stringify(dailyLabels) %>,
-                datasets: [{
-                    label: 'Sums Solved',
-                    data: <%- JSON.stringify(dailySums) %>,
-                    borderColor: '#ffffff',
-                    borderWidth: 2,
-                    fill: false,
-                    tension: 0.4,
-                    pointBackgroundColor: '#ffffff',
-                    pointBorderColor: 'rgba(255, 255, 255, 0.5)',
-                    pointBorderWidth: 2,
-                    pointRadius: 4,
-                    pointHoverRadius: 6,
-                    showLine: true
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        ticks: { 
-                            color: '#999999',
-                            font: { size: 10 }
-                        },
-                        grid: { 
-                            color: 'rgba(255, 255, 255, 0.05)',
-                            borderDash: [5, 5]
-                        }
-                    },
-                    x: {
-                        ticks: { 
-                            color: '#999999',
-                            font: { size: 10 }
-                        },
-                        grid: { display: false }
-                    }
-                },
-                plugins: {
-                    legend: { display: false },
-                    tooltip: {
-                        enabled: true,
-                        backgroundColor: 'rgba(20, 27, 31, 0.9)',
-                        titleFont: { size: 12 },
-                        bodyFont: { size: 12 },
-                        padding: 10,
-                        cornerRadius: 5,
+        if (typeof Chart === 'undefined') {
+            console.error('Chart.js failed to load');
+        } else {
+            new Chart(dailySumsCtx, {
+                type: 'line',
+                data: {
+                    labels: <%- JSON.stringify(dailyLabels) %>,
+                    datasets: [{
+                        label: 'Sums Solved',
+                        data: <%- JSON.stringify(dailySums) %>,
                         borderColor: '#ffffff',
-                        borderWidth: 1,
-                        displayColors: false,
-                        mode: 'nearest',
-                        intersect: false,
-                        position: 'nearest'
-                    }
-                },
-                elements: {
-                    line: {
-                        borderJoinStyle: 'round'
-                    }
-                }
-            }
-        });
-
-        // Circle Chart (Pie Chart with Futuristic Design)
-        const circleCtx = document.getElementById('circleChart').getContext('2d');
-        new Chart(circleCtx, {
-            type: 'doughnut',
-            data: {
-                labels: ['Correct', 'Wrong'],
-                datasets: [{
-                    data: [<%= correctSums %>, <%= wrongSums %>],
-                    backgroundColor: [
-                        'rgba(255, 255, 255, 0.3)',
-                        'rgba(255, 255, 255, 0.1)'
-                    ],
-                    borderColor: [
-                        'rgba(255, 255, 255, 0.8)',
-                        'rgba(255, 255, 255, 0.5)'
-                    ],
-                    borderWidth: 2
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                cutout: '70%',
-                plugins: {
-                    legend: { display: false }
-                },
-                elements: {
-                    arc: {
                         borderWidth: 2,
-                        borderColor: 'rgba(255, 255, 255, 0.2)'
+                        fill: false,
+                        tension: 0.4,
+                        pointBackgroundColor: '#ffffff',
+                        pointBorderColor: 'rgba(255, 255, 255, 0.5)',
+                        pointBorderWidth: 2,
+                        pointRadius: 4,
+                        pointHoverRadius: 6,
+                        showLine: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: { beginAtZero: true, ticks: { color: '#999999', font: { size: 10 } }, grid: { color: 'rgba(255, 255, 255, 0.05)', borderDash: [5, 5] } },
+                        x: { ticks: { color: '#999999', font: { size: 10 } }, grid: { display: false } }
+                    },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: { enabled: true, backgroundColor: 'rgba(20, 27, 31, 0.9)', titleFont: { size: 12 }, bodyFont: { size: 12 }, padding: 10, cornerRadius: 5, borderColor: '#ffffff', borderWidth: 1, displayColors: false, mode: 'nearest', intersect: false, position: 'nearest' }
+                    },
+                    elements: { line: { borderJoinStyle: 'round' } }
+                }
+            });
+        }
+    
+        // Circle Chart
+        const circleCtx = document.getElementById('circleChart').getContext('2d');
+        if (typeof Chart !== 'undefined') {
+            new Chart(circleCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Correct', 'Wrong'],
+                    datasets: [{
+                        data: [<%= correctSums %>, <%= wrongSums %>],
+                        backgroundColor: ['rgba(255, 255, 255, 0.3)', 'rgba(255, 255, 255, 0.1)'],
+                        borderColor: ['rgba(255, 255, 255, 0.8)', 'rgba(255, 255, 255, 0.5)'],
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '70%',
+                    plugins: { legend: { display: false } },
+                    elements: { arc: { borderWidth: 2, borderColor: 'rgba(255, 255, 255, 0.2)' } }
+                },
+                plugins: [{
+                    id: 'outerRing',
+                    afterDraw(chart) {
+                        const ctx = chart.ctx;
+                        const width = chart.width;
+                        const height = chart.height;
+                        const centerX = width / 2;
+                        const centerY = height / 2;
+                        const outerRadius = Math.min(width, height) / 2 - 10;
+    
+                        ctx.beginPath();
+                        ctx.arc(centerX, centerY, outerRadius, 0, 2 * Math.PI);
+                        ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+                        ctx.lineWidth = 2;
+                        ctx.shadowColor = 'rgba(255, 255, 255, 0.5)';
+                        ctx.shadowBlur = 20;
+                        ctx.stroke();
+                        ctx.shadowBlur = 0;
+    
+                        ctx.beginPath();
+                        ctx.arc(centerX, centerY, outerRadius - 10, 0, 2 * Math.PI);
+                        ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+                        ctx.lineWidth = 1;
+                        ctx.stroke();
                     }
-                }
-            },
-            plugins: [{
-                id: 'outerRing',
-                afterDraw(chart) {
-                    const ctx = chart.ctx;
-                    const width = chart.width;
-                    const height = chart.height;
-                    const centerX = width / 2;
-                    const centerY = height / 2;
-                    const outerRadius = Math.min(width, height) / 2 - 10;
-
-                    ctx.beginPath();
-                    ctx.arc(centerX, centerY, outerRadius, 0, 2 * Math.PI);
-                    ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
-                    ctx.lineWidth = 2;
-                    ctx.shadowColor = 'rgba(255, 255, 255, 0.5)';
-                    ctx.shadowBlur = 20;
-                    ctx.stroke();
-                    ctx.shadowBlur = 0;
-
-                    ctx.beginPath();
-                    ctx.arc(centerX, centerY, outerRadius - 10, 0, 2 * Math.PI);
-                    ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
-                    ctx.lineWidth = 1;
-                    ctx.stroke();
-                }
-            }]
-        });
-
+                }]
+            });
+        }
+    
         // Modal Functions
         function openModal(moduleId) {
             const module = <%- JSON.stringify(moduleStats) %>.find(m => m.id == moduleId);
             const details = detailedModuleData[moduleId] || [];
             if (!module) return;
-
+    
             const modal = document.getElementById('moduleModal');
             const title = document.getElementById('modalTitle');
             const summary = document.getElementById('modalSummary');
             const wrongList = document.getElementById('modalWrongList');
-
+    
             title.textContent = module.name;
             wrongList.innerHTML = '';
-
+    
             const totalSums = module.totalSums;
             const correctSums = details.filter(q => q.is_correct).length;
             const wrongSums = details.filter(q => q.answer !== null && !q.is_correct).length;
             const accuracy = totalSums > 0 ? Math.round((correctSums / totalSums) * 100) : 0;
-
+    
             if (module.name.startsWith('Exam Mode')) {
-                // Exam Mode: MCQ and QA breakdown
                 const mcqQuestions = details.filter(q => q.type === 'MCQ');
                 const qaQuestions = details.filter(q => q.type === 'QA');
+                const vaQuestions = details.filter(q => q.type === 'VA');
                 const mcqCorrect = mcqQuestions.filter(q => q.is_correct).length;
                 const qaCorrect = qaQuestions.filter(q => q.is_correct).length;
+                const vaCorrect = vaQuestions.filter(q => q.is_correct).length;
                 const mcqWrong = mcqQuestions.filter(q => q.answer !== null && !q.is_correct).length;
                 const qaWrong = qaQuestions.filter(q => q.answer !== null && !q.is_correct).length;
+                const vaWrong = vaQuestions.filter(q => q.answer !== null && !q.is_correct).length;
                 const totalScore = (correctSums * 4) - wrongSums;
-                const cutoffScore = module.totalQuestions * 2; // Assuming 50% as cutoff (2 points avg per question)
-
+                const cutoffScore = module.totalQuestions * 2;
+    
                 summary.innerHTML = `
                     <p>Total Sums: ${totalSums} / ${module.totalQuestions}</p>
                     <p>Correct: ${correctSums}</p>
@@ -713,9 +675,10 @@
                     <p>Accuracy: ${accuracy}%</p>
                     <p>MCQ: ${mcqCorrect} / ${mcqQuestions.length} (Wrong: ${mcqWrong})</p>
                     <p>QA: ${qaCorrect} / ${qaQuestions.length} (Wrong: ${qaWrong})</p>
+                    <p>VA: ${vaCorrect} / ${vaQuestions.length} (Wrong: ${vaWrong})</p>
                     <p>Total Score: ${totalScore} (Cutoff: ${cutoffScore})</p>
                 `;
-
+    
                 const wrongQuestions = details.filter(q => q.answer !== null && !q.is_correct);
                 if (wrongQuestions.length > 0) {
                     wrongList.innerHTML = '<h4>Wrong Answers</h4><ul>' + 
@@ -723,14 +686,13 @@
                         '</ul>';
                 }
             } else {
-                // Normal Mode
                 summary.innerHTML = `
                     <p>Total Sums: ${totalSums} / ${module.totalQuestions}</p>
                     <p>Correct: ${correctSums}</p>
                     <p>Wrong: ${wrongSums}</p>
                     <p>Accuracy: ${accuracy}%</p>
                 `;
-
+    
                 const wrongQuestions = details.filter(q => q.answer !== null && !q.is_correct);
                 if (wrongQuestions.length > 0) {
                     wrongList.innerHTML = '<h4>Wrong Answers</h4><ul>' + 
@@ -738,18 +700,17 @@
                         '</ul>';
                 }
             }
-
+    
             modal.style.opacity = '0';
             modal.style.display = 'flex';
             requestAnimationFrame(() => modal.style.opacity = '1');
         }
-
+    
         function closeModal() {
             const modal = document.getElementById('moduleModal');
             modal.style.opacity = '0';
             setTimeout(() => modal.style.display = 'none', 200);
         }
-
     </script>
 </body>
 </html>
