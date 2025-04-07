@@ -621,7 +621,7 @@ app.get('/dashboard', ensureUserAuthenticated, async (req, res) => {
                 SUM(CASE WHEN ua.is_correct = false AND ua.answer IS NOT NULL THEN 1 ELSE 0 END) as wrong_sums,
                 COUNT(q.*) as total_questions,
                 SUM(CASE WHEN ua.is_correct = true THEN 4 
-                        WHEN ua.is_correct = false AND ua.answer IS NOT NULL AND q.type != 'QA' THEN -1 
+                        WHEN ua.is_correct = false AND ua.answer IS NOT NULL AND q.type IN ('MCQ', 'VA') THEN -1 
                         ELSE 0 END) as score,
                 SUM(ua.time_spent) as time_spent
              FROM modules m
