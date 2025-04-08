@@ -853,6 +853,32 @@ app.post('/admin/edit-user/:userId', ensureAdminAuthenticated, async (req, res) 
     }
 });
 
+app.post('/admin/add-user', ensureAdminAuthenticated, async (req, res) => {
+    const { username, password, role } = req.body;
+    try {
+      if (!username || !password || !role) {
+        return res.status(400).json({ success: false, message: 'Username, password, and role are required' });
+      }
+      if (!['user', 'admin'].includes(role)) {
+        return res.status(400).json({ success: false, message: 'Invalid role' });
+      }
+      const existingUser = await pool.query('SELECT 1 FROM users WHERE username = $1', [username]);
+      if (existingUser.rowCount > 0) {
+        return res.status(400).json({ success: false, message: 'Username already exists' });
+      }
+      const hashedPassword = await bcrypt.hash(password, 10);
+      const result = await pool.query(
+        'INSERT INTO users (username, password, role) VALUES ($1, $2, $3) RETURNING [username, hashedPassword, role]',
+        [username, hashedPassword, role]
+      );
+      console.log('User added: ', { id: result.rows[0].id, username, role });
+      res.json({ success: true });
+    } catch (err) {
+      console.error('Add user error: ', err.stack);
+      res.status(500).json({ success: false, message: 'Server error' });
+    }
+  });
+
 app.post('/admin/delete-user/:userId', ensureAdminAuthenticated, async (req, res) => {
     const userId = parseInt(req.params.userId);
     try {
@@ -878,3 +904,17 @@ pool.connect().then(() => {
     console.error('Failed to connect to database:', err.stack);
     process.exit(1);
 });
+
+(async () => {
+    try {
+        const hashedPassword = await bcrypt.hash('supriti26', 10);
+        const result = await pool.query(
+            'INSERT INTO users (username, password, role) VALUES ($1, $2, $3) RETURNING *',
+            ['supriti', hashedPassword, 'user']
+        );
+        console.log('User added:', result.rows[0]);
+        await pool.end();
+    } catch (err) {
+        console.error('Error:', err.stack);
+    }
+})();
