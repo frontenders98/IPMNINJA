@@ -81,8 +81,8 @@ async function initializeDatabase() {
             { username: 'rishav', password: 'goodboy', role: 'user' },
             { username: 'diya', password: 'emma', role: 'user' },
             { username: 'ayush', password: 'jawline', role: 'user' },
-            { username: 'debraj', password: 'mathpro', role: 'user' }
-            { username: 'supriti', password: 'supriti26', role: 'user' }
+            { username: 'debraj', password: 'mathpro', role: 'user' },
+            { username: 'supriti', password: 'supriti26', role: 'user'}
         ];
 
         for (const user of newUsers) {
