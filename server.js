@@ -332,8 +332,22 @@ app.post('/admin/add-question/:moduleId', ensureAdminAuthenticated, async (req, 
     const moduleId = parseInt(req.params.moduleId);
     const { type, question, option_a, option_b, option_c, option_d, option_e, correct_answer_qa, correct_answer_mcq_va, explanation, tags } = req.body;
     const correct_answer = type === 'QA' ? correct_answer_qa : correct_answer_mcq_va;
-    if (!type || !question || !correct_answer) return res.status(400).json({ success: false, message: 'Missing required fields' });
+
+    console.log('Adding question to module:', moduleId, 'Data:', req.body);
+
+    if (!['QA', 'MCQ', 'VA'].includes(type)) {
+        return res.status(400).json({ success: false, message: 'Invalid question type (must be QA, MCQ, or VA)' });
+    }
+    if (!question || !correct_answer) {
+        return res.status(400).json({ success: false, message: 'Question and correct answer are required' });
+    }
+
     try {
+        const moduleCheck = await pool.query('SELECT * FROM modules WHERE id = $1', [moduleId]);
+        if (moduleCheck.rows.length === 0) {
+            return res.status(404).json({ success: false, message: 'Module not found' });
+        }
+
         const result = await pool.query(
             `INSERT INTO questions (module_id, type, question, option_a, option_b, option_c, option_d, option_e, correct_answer, explanation, tags) 
              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING id`,
@@ -342,7 +356,7 @@ app.post('/admin/add-question/:moduleId', ensureAdminAuthenticated, async (req, 
         res.json({ success: true, id: result.rows[0].id });
     } catch (err) {
         console.error('Add question error:', err.stack);
-        res.status(500).json({ success: false, message: 'Server error' });
+        res.status(500).json({ success: false, message: 'Server error: ' + err.message });
     }
 });
 
@@ -690,9 +704,12 @@ app.get('/dashboard', ensureUserAuthenticated, async (req, res) => {
                 SUM(CASE WHEN ua.is_correct = true THEN 1 ELSE 0 END) as correct_sums,
                 SUM(CASE WHEN ua.is_correct = false AND ua.answer IS NOT NULL THEN 1 ELSE 0 END) as wrong_sums,
                 COUNT(q.*) as total_questions,
-                SUM(CASE WHEN ua.is_correct = true THEN 4 
-                        WHEN ua.is_correct = false AND ua.answer IS NOT NULL AND q.type IN ('MCQ', 'VA') THEN -1 
-                        ELSE 0 END) as score,
+                SUM(CASE 
+                    WHEN ua.is_correct = true THEN 4 
+                    WHEN ua.is_correct = false AND ua.answer IS NOT NULL AND q.type = 'QA' THEN 0 
+                    WHEN ua.is_correct = false AND ua.answer IS NOT NULL AND q.type IN ('MCQ', 'VA') THEN -1 
+                    ELSE 0 
+                END) as score,
                 SUM(ua.time_spent) as time_spent
              FROM modules m
              LEFT JOIN questions q ON q.module_id = m.id
@@ -701,7 +718,7 @@ app.get('/dashboard', ensureUserAuthenticated, async (req, res) => {
              ORDER BY m.id`,
             [req.session.userId]
         );
-        
+
         const moduleStats = moduleStatsResult.rows.map(row => ({
             id: row.id,
             name: row.name,
