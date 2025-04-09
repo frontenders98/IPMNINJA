@@ -172,6 +172,7 @@ app.post('/admin-logout', (req, res) => {
 
 app.get('/admin', ensureAdminAuthenticated, async (req, res) => {
     try {
+        // Fetch module data for admin.ejs
         const modulesResult = await pool.query('SELECT * FROM modules ORDER BY id');
         res.render('admin', { modules: modulesResult.rows });
     } catch (err) {
@@ -182,6 +183,7 @@ app.get('/admin', ensureAdminAuthenticated, async (req, res) => {
 
 app.get('/admin/overview', ensureAdminAuthenticated, async (req, res) => {
     try {
+        // Overview stats
         const modulesResult = await pool.query('SELECT COUNT(*) FROM modules');
         const totalModules = parseInt(modulesResult.rows[0].count);
 
@@ -197,8 +199,10 @@ app.get('/admin/overview', ensureAdminAuthenticated, async (req, res) => {
         const answersResult = await pool.query('SELECT COUNT(*) FROM user_answers');
         const totalAnswers = parseInt(answersResult.rows[0].count);
 
+        // User list
         const usersResult = await pool.query('SELECT id, username, role FROM users');
 
+        // Sample user detail (for initial display)
         const sampleUserId = usersResult.rows.length > 0 ? usersResult.rows[0].id : null;
         let sampleUser = null, lastActive = new Date(), todayStats = { total_sums: 0, correct_sums: 0, wrong_sums: 0, not_attempted: 0 }, answers = [], currentPage = 1, totalPages = 1;
         if (sampleUserId) {
@@ -332,13 +336,7 @@ app.post('/admin/add-question/:moduleId', ensureAdminAuthenticated, async (req, 
     const moduleId = parseInt(req.params.moduleId);
     const { type, question, option_a, option_b, option_c, option_d, option_e, correct_answer_qa, correct_answer_mcq_va, explanation, tags } = req.body;
     const correct_answer = type === 'QA' ? correct_answer_qa : correct_answer_mcq_va;
-
-    console.log('Request to add question:', { moduleId, body: req.body }); // Debug log
-
-    if (!type || !question || !correct_answer) {
-        return res.status(400).json({ success: false, message: 'Missing required fields' });
-    }
-
+    if (!type || !question || !correct_answer) return res.status(400).json({ success: false, message: 'Missing required fields' });
     try {
         const result = await pool.query(
             `INSERT INTO questions (module_id, type, question, option_a, option_b, option_c, option_d, option_e, correct_answer, explanation, tags) 
@@ -348,11 +346,7 @@ app.post('/admin/add-question/:moduleId', ensureAdminAuthenticated, async (req, 
         res.json({ success: true, id: result.rows[0].id });
     } catch (err) {
         console.error('Add question error:', err.stack);
-        if (err.code === '23505') { // PostgreSQL duplicate key error
-            res.status(500).json({ success: false, message: 'Server error: Duplicate question ID conflict' });
-        } else {
-            res.status(500).json({ success: false, message: `Server error: ${err.message}` });
-        }
+        res.status(500).json({ success: false, message: 'Server error' });
     }
 });
 
@@ -472,32 +466,18 @@ app.get('/exam/:moduleId', ensureUserAuthenticated, async (req, res) => {
         const userAnswers = answersResult.rows;
 
         const answers = new Array(questions.length).fill(null);
-        let isReviewMode = false;
-        if (isExamMode) {
-            const submittedResult = await pool.query(
-                'SELECT COUNT(DISTINCT question_id) as submitted FROM user_answers WHERE user_id = $1 AND question_id IN (SELECT id FROM questions WHERE module_id = $2)',
-                [userId, moduleId]
-            );
-            isReviewMode = submittedResult.rows[0].submitted >= questions.length;
-            if (isReviewMode) {
-                questions.forEach((q, i) => {
-                    const userAnswer = userAnswers.find(a => a.question_id === q.id);
-                    if (userAnswer) answers[i] = userAnswer.answer;
-                });
-            }
-        } else {
-            questions.forEach((q, i) => {
-                const userAnswer = userAnswers.find(a => a.question_id === q.id);
-                if (userAnswer) answers[i] = userAnswer.answer;
-            });
-        }
+        questions.forEach((q, i) => {
+            const userAnswer = userAnswers.find(a => a.question_id === q.id);
+            if (userAnswer) answers[i] = userAnswer.answer;
+        });
 
         let startIndex = 0;
-        if (!isExamMode && !isReviewMode) {
+        if (!isExamMode) {
             const lastAnsweredIndex = answers.reduce((max, answer, i) => answer !== null ? i : max, -1);
             startIndex = lastAnsweredIndex + 1 < questions.length ? lastAnsweredIndex + 1 : 0;
         }
 
+        const isReviewMode = isExamMode && answersResult.rowCount > 0;
         const currentSection = isExamMode && !isReviewMode ? 'QA' : null;
 
         res.render('exam', {
@@ -516,20 +496,72 @@ app.get('/exam/:moduleId', ensureUserAuthenticated, async (req, res) => {
     }
 });
 
-app.post('/exam/:moduleId/save-answer', ensureUserAuthenticated, async (req, res) => {
+app.post('/exam/:moduleId/complete-section', ensureUserAuthenticated, async (req, res) => {
     const moduleId = parseInt(req.params.moduleId);
+    const { section, answers, time_spent } = req.body;
+    try {
+        const questionResult = await pool.query(
+            'SELECT id, type, correct_answer FROM questions WHERE module_id = $1 AND type = $2 ORDER BY id',
+            [moduleId, section]
+        );
+        const questions = questionResult.rows;
+
+        for (let i = 0; i < questions.length; i++) {
+            const q = questions[i];
+            const answer = answers[i] || null;
+            if (answer === undefined) continue;
+
+            const isCorrect = answer === q.correct_answer;
+            const existing = await pool.query(
+                'SELECT 1 FROM user_answers WHERE user_id = $1 AND question_id = $2',
+                [req.session.userId, q.id]
+            );
+            if (existing.rowCount > 0) {
+                if (answer !== null) {
+                    await pool.query(
+                        'UPDATE user_answers SET answer = $1, is_correct = $2, time_spent = $3, submitted_at = NOW() WHERE user_id = $4 AND question_id = $5',
+                        [answer, isCorrect, time_spent, req.session.userId, q.id]
+                    );
+                }
+            } else if (answer !== null) {
+                await pool.query(
+                    'INSERT INTO user_answers (user_id, question_id, answer, is_correct, time_spent, submitted_at) VALUES ($1, $2, $3, $4, $5, NOW())',
+                    [req.session.userId, q.id, answer, isCorrect, time_spent]
+                );
+            }
+        }
+
+        const nextSection = section === 'QA' ? 'MCQ' : section === 'MCQ' ? 'VA' : null;
+        res.json({ success: true, nextSection });
+    } catch (err) {
+        console.error('Section completion error:', err.stack);
+        res.status(500).json({ success: false, message: 'Failed to save section' });
+    }
+});
+
+app.post('/exam/:moduleId/save-answer', ensureUserAuthenticated, async (req, res) => {
     const { questionId, answer, time_spent } = req.body;
     try {
-        const questionResult = await pool.query('SELECT correct_answer FROM questions WHERE id = $1 AND module_id = $2', [questionId, moduleId]);
+        const questionResult = await pool.query('SELECT correct_answer FROM questions WHERE id = $1', [questionId]);
         if (questionResult.rows.length === 0) return res.status(404).json({ success: false, message: 'Question not found' });
         const correctAnswer = questionResult.rows[0].correct_answer;
 
         const isCorrect = answer === correctAnswer;
-        if (answer !== null && answer !== '') {
+        const existing = await pool.query(
+            'SELECT 1 FROM user_answers WHERE user_id = $1 AND question_id = $2',
+            [req.session.userId, questionId]
+        );
+        if (existing.rowCount > 0) {
+            if (answer !== null) {
+                await pool.query(
+                    'UPDATE user_answers SET answer = $1, is_correct = $2, time_spent = $3, submitted_at = NOW() WHERE user_id = $4 AND question_id = $5',
+                    [answer, isCorrect, time_spent, req.session.userId, questionId]
+                );
+            }
+        } else if (answer !== null) {
             await pool.query(
-                'INSERT INTO user_answers (user_id, question_id, answer, is_correct, time_spent, submitted_at) VALUES ($1, $2, $3, $4, $5, NOW()) ' +
-                'ON CONFLICT (user_id, question_id) DO UPDATE SET answer = $3, is_correct = $4, time_spent = $5, submitted_at = NOW()',
-                [req.session.userId, questionId, answer, isCorrect, time_spent || 0]
+                'INSERT INTO user_answers (user_id, question_id, answer, is_correct, time_spent, submitted_at) VALUES ($1, $2, $3, $4, $5, NOW())',
+                [req.session.userId, questionId, answer, isCorrect, time_spent]
             );
         }
         res.json({ success: true });
@@ -539,120 +571,8 @@ app.post('/exam/:moduleId/save-answer', ensureUserAuthenticated, async (req, res
     }
 });
 
-app.post('/exam/:moduleId/complete', ensureUserAuthenticated, async (req, res) => {
-    const moduleId = parseInt(req.params.moduleId);
-    const { answers } = req.body;
-    console.log('POST /exam/:moduleId/complete hit:', { moduleId, answers });
-
-    if (!Array.isArray(answers)) {
-        console.log('Invalid answers format:', answers);
-        return res.status(400).json({ success: false, message: 'Invalid answers format: must be an array' });
-    }
-
-    try {
-        console.log('Starting transaction for module:', moduleId);
-        await pool.query('BEGIN');
-
-        for (const { questionId, answer, time_spent } of answers) {
-            if (!questionId || typeof time_spent === 'undefined') {
-                console.warn(`Skipping invalid entry: questionId=${questionId}, answer=${answer}, time_spent=${time_spent}`);
-                continue;
-            }
-
-            const questionResult = await pool.query(
-                'SELECT correct_answer FROM questions WHERE id = $1 AND module_id = $2',
-                [questionId, moduleId]
-            );
-            if (questionResult.rows.length === 0) {
-                console.warn(`Question not found: questionId=${questionId}, moduleId=${moduleId}`);
-                continue;
-            }
-            const correctAnswer = questionResult.rows[0].correct_answer;
-
-            const safeAnswer = answer === undefined || answer === '' ? null : answer;
-            const isCorrect = safeAnswer === correctAnswer ? true : (safeAnswer === null ? false : safeAnswer === correctAnswer);
-            const safeTimeSpent = Number.isFinite(Number(time_spent)) ? Number(time_spent) : 0;
-
-            console.log(`Processing answer: questionId=${questionId}, answer=${safeAnswer}, time_spent=${safeTimeSpent}`);
-            const existingAnswer = await pool.query(
-                'SELECT 1 FROM user_answers WHERE user_id = $1 AND question_id = $2',
-                [req.session.userId, questionId]
-            );
-
-            if (existingAnswer.rowCount > 0) {
-                await pool.query(
-                    'UPDATE user_answers SET answer = $1, is_correct = $2, time_spent = $3, submitted_at = NOW() WHERE user_id = $4 AND question_id = $5',
-                    [safeAnswer, isCorrect, safeTimeSpent, req.session.userId, questionId]
-                );
-                console.log(`Updated answer for questionId=${questionId}`);
-            } else {
-                await pool.query(
-                    'INSERT INTO user_answers (user_id, question_id, answer, is_correct, time_spent, submitted_at) VALUES ($1, $2, $3, $4, $5, NOW())',
-                    [req.session.userId, questionId, safeAnswer, isCorrect, safeTimeSpent]
-                );
-                console.log(`Inserted answer for questionId=${questionId}`);
-            }
-        }
-
-        await pool.query('COMMIT');
-        console.log('Transaction committed for module:', moduleId);
-        res.json({ success: true, redirect: `/exam/${moduleId}/finish` });
-    } catch (err) {
-        await pool.query('ROLLBACK');
-        console.error('Exam completion error:', { message: err.message, stack: err.stack, moduleId, answers });
-        res.status(500).json({ success: false, message: `Failed to save exam answers: ${err.message}` });
-    }
-});
-
-app.get('/exam/:moduleId/finish', ensureUserAuthenticated, async (req, res) => {
-    const moduleId = parseInt(req.params.moduleId);
-    try {
-        const moduleResult = await pool.query('SELECT * FROM modules WHERE id = $1', [moduleId]);
-        if (moduleResult.rows.length === 0) return res.status(404).send('Module not found');
-        const module = moduleResult.rows[0];
-        res.render('exam-complete', { module });
-    } catch (err) {
-        console.error('Exam finish fetch error:', err.stack);
-        res.status(500).send('Server error');
-    }
-});
-
-app.get('/exam/:moduleId/complete', ensureUserAuthenticated, async (req, res) => {
-    const moduleId = parseInt(req.params.moduleId);
-    const userId = req.session.userId;
-    try {
-        const moduleResult = await pool.query('SELECT * FROM modules WHERE id = $1', [moduleId]);
-        if (moduleResult.rows.length === 0) return res.status(404).send('Module not found');
-        const module = moduleResult.rows[0];
-
-        const questionResult = await pool.query('SELECT * FROM questions WHERE module_id = $1 ORDER BY id', [moduleId]);
-        const questions = questionResult.rows;
-
-        const answersResult = await pool.query(
-            'SELECT question_id, answer FROM user_answers WHERE user_id = $1 AND question_id IN (SELECT id FROM questions WHERE module_id = $2)',
-            [userId, moduleId]
-        );
-        const userAnswers = answersResult.rows;
-
-        const answers = questions.map(q => {
-            const userAnswer = userAnswers.find(a => a.question_id === q.id);
-            return userAnswer ? userAnswer.answer : null;
-        });
-
-        res.render('exam', {
-            questions,
-            module,
-            startIndex: 0,
-            isExamMode: false,
-            isReviewMode: true,
-            timeLimit: module.time_limit || 2400,
-            answers,
-            currentSection: null
-        });
-    } catch (err) {
-        console.error('Exam complete fetch error:', err.stack);
-        res.status(500).send('Server error');
-    }
+app.get('/exam/:moduleId/complete', ensureUserAuthenticated, (req, res) => {
+    res.render('exam-complete', { moduleId: req.params.moduleId });
 });
 
 app.get('/dashboard', ensureUserAuthenticated, async (req, res) => {
@@ -700,12 +620,9 @@ app.get('/dashboard', ensureUserAuthenticated, async (req, res) => {
                 SUM(CASE WHEN ua.is_correct = true THEN 1 ELSE 0 END) as correct_sums,
                 SUM(CASE WHEN ua.is_correct = false AND ua.answer IS NOT NULL THEN 1 ELSE 0 END) as wrong_sums,
                 COUNT(q.*) as total_questions,
-                SUM(CASE 
-                    WHEN ua.is_correct = true THEN 4 
-                    WHEN ua.is_correct = false AND ua.answer IS NOT NULL AND q.type = 'QA' THEN 0 
-                    WHEN ua.is_correct = false AND ua.answer IS NOT NULL AND q.type IN ('MCQ', 'VA') THEN -1 
-                    ELSE 0 
-                END) as score,
+                SUM(CASE WHEN ua.is_correct = true THEN 4 
+                        WHEN ua.is_correct = false AND ua.answer IS NOT NULL AND q.type IN ('MCQ', 'VA') THEN -1 
+                        ELSE 0 END) as score,
                 SUM(ua.time_spent) as time_spent
              FROM modules m
              LEFT JOIN questions q ON q.module_id = m.id
