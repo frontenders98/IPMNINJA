@@ -302,7 +302,7 @@
             cursor: not-allowed;
             opacity: 0.7;
         }
-        @keyframes correctAnimation {
+        @keyframes addressAnimation {
             0% { transform: scale(1); }
             50% { transform: scale(1.05); }
             100% { transform: scale(1); }
@@ -481,705 +481,725 @@
             <button class="next-btn" id="next-btn" onclick="nextQuestion()" style="display: none;">Next</button>
         <% } %>
     </div>
-
-   <script>
-    let questions = <%- JSON.stringify(questions) %>;
-    let currentQuestionIndex = <%- JSON.stringify(startIndex) %>;
-    let answers = <%- JSON.stringify(answers) %>;
-    const isExamMode = <%- JSON.stringify(isExamMode) %>;
-    const isReviewMode = <%- JSON.stringify(isReviewMode) %>;
-    const timeLimit = <%- JSON.stringify(timeLimit) %>;
-    let skipped = new Array(questions.length).fill(false);
-    let timerInterval = null;
-    let timeRemaining = timeLimit;
-    let currentSection = <%- JSON.stringify(currentSection) %>;
-    let sectionIndices = isExamMode && !isReviewMode ? { QA: -1, MCQ: -1, VA: -1 } : null;
-    let examCompleted = false;
-    let questionStartTime = null;
-    let resumeIndex = currentQuestionIndex;
-
-    if (!isExamMode && !isReviewMode) {
-        questions.sort((a, b) => {
-            const order = { 'QA': 0, 'MCQ': 1, 'VA': 2 };
-            return order[a.type] - order[b.type] || a.id - b.id;
-        });
-        resumeIndex = answers.findIndex(a => !a);
-        if (resumeIndex === -1) resumeIndex = answers.length;
-        currentQuestionIndex = resumeIndex;
-    } else if (isExamMode && !isReviewMode) {
-        questions.sort((a, b) => {
-            if (a.type === 'QA' && b.type !== 'QA') return -1;
-            if (b.type === 'QA' && a.type !== 'QA') return 1;
-            if (a.type === 'MCQ' && b.type === 'VA') return -1;
-            if (b.type === 'MCQ' && a.type !== 'VA') return 1;
-            if (a.type === 'VA' && b.type === 'VA') {
-                if (a.tags === b.tags) return a.id - b.id;
-                return (a.tags || '').localeCompare(b.tags || '');
+    <script>
+        let questions = <%- JSON.stringify(questions) %>;
+        let currentQuestionIndex = <%- JSON.stringify(startIndex) %>;
+        let answers = <%- JSON.stringify(answers) %>;
+        const isExamMode = <%- JSON.stringify(isExamMode) %>;
+        const isReviewMode = <%- JSON.stringify(isReviewMode) %>;
+        const timeLimit = <%- JSON.stringify(timeLimit) %>;
+        let skipped = new Array(questions.length).fill(false);
+        let timerInterval = null;
+        let timeRemaining = timeLimit;
+        let currentSection = <%- JSON.stringify(currentSection) %>;
+        let sectionIndices = isExamMode && !isReviewMode ? { QA: -1, MCQ: -1, VA: -1 } : null;
+        let examCompleted = false;
+        let questionStartTime = null;
+        let resumeIndex = currentQuestionIndex;
+        let sectionStartTime = null;
+        
+        if (!isExamMode && !isReviewMode) {
+            questions.sort((a, b) => {
+                const order = { 'QA': 0, 'MCQ': 1, 'VA': 2 };
+                return order[a.type] - order[b.type] || a.id - b.id;
+            });
+            resumeIndex = answers.findIndex(a => !a);
+            if (resumeIndex === -1) resumeIndex = answers.length;
+            currentQuestionIndex = resumeIndex;
+        } else if (isExamMode && !isReviewMode) {
+            questions.sort((a, b) => {
+                if (a.type === 'QA' && b.type !== 'QA') return -1;
+                if (b.type === 'QA' && a.type !== 'QA') return 1;
+                if (a.type === 'MCQ' && b.type === 'VA') return -1;
+                if (b.type === 'MCQ' && a.type !== 'VA') return 1;
+                if (a.type === 'VA' && b.type === 'VA') {
+                    if (a.tags === b.tags) return a.id - b.id;
+                    return (a.tags || '').localeCompare(b.tags || '');
+                }
+                return a.id - b.id;
+            });
+            sectionIndices.QA = questions.findIndex(q => q.type === 'QA');
+            sectionIndices.MCQ = questions.findIndex(q => q.type === 'MCQ');
+            sectionIndices.VA = questions.findIndex(q => q.type === 'VA');
+        } else if (isReviewMode) {
+            questions.sort((a, b) => {
+                const order = { 'QA': 0, 'MCQ': 1, 'VA': 2 };
+                return order[a.type] - order[b.type] || a.id - b.id;
+            });
+        }
+        
+        function disableBackNavigation() {
+            if (!isExamMode || isReviewMode) return;
+            history.pushState(null, null, window.location.href);
+            window.onpopstate = () => history.go(1);
+            document.getElementById('back-btn').classList.add('disabled');
+        }
+        
+        function enableBackNavigation() {
+            window.onpopstate = null;
+            document.getElementById('back-btn').classList.remove('disabled');
+        }
+        
+        function displayQuestion() {
+            questionStartTime = Date.now();
+            if (isExamMode && !isReviewMode) displayExamModeQuestion();
+            else if (isReviewMode) displayReviewModeQuestion();
+            else displayNormalModeQuestion();
+            updateNavigationButtons();
+        }
+        
+        function displayNormalModeQuestion() {
+            if (currentQuestionIndex >= questions.length) {
+                document.getElementById('question-text').innerHTML = 'Practice Complete!';
+                document.getElementById('question-text').style.display = 'block';
+                document.getElementById('va-question-box').style.display = 'none';
+                document.getElementById('options').innerHTML = '';
+                document.getElementById('qa-input-container').style.display = 'none';
+                document.getElementById('feedback').style.display = 'none';
+                document.getElementById('answer-explanation').style.display = 'none';
+                document.getElementById('goto-dropdown').style.display = 'none';
+                document.getElementById('next-btn').style.display = 'none';
+                return;
             }
-            return a.id - b.id;
-        });
-        sectionIndices.QA = questions.findIndex(q => q.type === 'QA');
-        sectionIndices.MCQ = questions.findIndex(q => q.type === 'MCQ');
-        sectionIndices.VA = questions.findIndex(q => q.type === 'VA');
-    } else if (isReviewMode) {
-        questions.sort((a, b) => {
-            const order = { 'QA': 0, 'MCQ': 1, 'VA': 2 };
-            return order[a.type] - order[b.type] || a.id - b.id;
-        });
-    }
-
-    function disableBackNavigation() {
-        if (!isExamMode || isReviewMode) return;
-        history.pushState(null, null, window.location.href);
-        window.onpopstate = () => history.go(1);
-        document.getElementById('back-btn').classList.add('disabled');
-    }
-
-    function enableBackNavigation() {
-        window.onpopstate = null;
-        document.getElementById('back-btn').classList.remove('disabled');
-    }
-
-    function displayQuestion() {
-        questionStartTime = Date.now();
-        if (isExamMode && !isReviewMode) displayExamModeQuestion();
-        else if (isReviewMode) displayReviewModeQuestion();
-        else displayNormalModeQuestion();
-        updateNavigationButtons();
-    }
-
-    function displayNormalModeQuestion() {
-        if (currentQuestionIndex >= questions.length) {
-            document.getElementById('question-text').innerHTML = 'Practice Complete!';
-            document.getElementById('question-text').style.display = 'block';
-            document.getElementById('va-question-box').style.display = 'none';
-            document.getElementById('options').innerHTML = '';
-            document.getElementById('qa-input-container').style.display = 'none';
+        
+            const q = questions[currentQuestionIndex];
+            const questionText = document.getElementById('question-text');
+            const vaQuestionBox = document.getElementById('va-question-box');
+            const optionsDiv = document.getElementById('options');
+            const qaInputContainer = document.getElementById('qa-input-container');
+            const nextBtn = document.getElementById('next-btn');
+            optionsDiv.innerHTML = '';
+        
+            if (q.type === 'VA' || q.type === 'MCQ') {
+                questionText.style.display = q.type === 'MCQ' ? 'block' : 'none';
+                vaQuestionBox.style.display = q.type === 'VA' ? 'block' : 'none';
+                questionText.innerHTML = q.question;
+                vaQuestionBox.innerHTML = q.question;
+                optionsDiv.style.display = 'flex';
+                qaInputContainer.style.display = 'none';
+                nextBtn.style.display = 'none';
+        
+                const options = [
+                    { letter: 'A', value: q.option_a },
+                    { letter: 'B', value: q.option_b },
+                    { letter: 'C', value: q.option_c },
+                    { letter: 'D', value: q.option_d }
+                ];
+                if (q.option_e) options.push({ letter: 'E', value: q.option_e });
+        
+                const row1 = document.createElement('div');
+                row1.className = 'option-row';
+                const row2 = document.createElement('div');
+                row2.className = 'option-row';
+                const row3 = document.createElement('div');
+                row3.className = 'option-row';
+        
+                options.forEach((opt, index) => {
+                    const btn = document.createElement('button');
+                    btn.className = 'option-btn';
+                    btn.innerHTML = `<span class="option-letter">${opt.letter}</span><span class="option-text">${opt.value}</span>`;
+                    if (answers[currentQuestionIndex]) {
+                        btn.disabled = true;
+                        btn.classList.add('disabled');
+                        if (opt.letter === q.correct_answer) btn.classList.add('correct');
+                        if (opt.letter === answers[currentQuestionIndex] && opt.letter !== q.correct_answer) btn.classList.add('wrong');
+                    } else if (currentQuestionIndex >= resumeIndex) {
+                        btn.onclick = () => checkAnswer(opt.letter, q.correct_answer, q.explanation, opt.value);
+                    } else {
+                        btn.disabled = true;
+                        btn.classList.add('disabled');
+                        if (opt.letter === q.correct_answer) btn.classList.add('correct');
+                        if (opt.letter === answers[currentQuestionIndex] && opt.letter !== q.correct_answer) btn.classList.add('wrong');
+                    }
+                    if (index < 2) row1.appendChild(btn);
+                    else if (index < 4) row2.appendChild(btn);
+                    else row3.appendChild(btn);
+                });
+        
+                optionsDiv.appendChild(row1);
+                if (row2.children.length) optionsDiv.appendChild(row2);
+                if (row3.children.length) optionsDiv.appendChild(row3);
+            } else if (q.type === 'QA') {
+                questionText.style.display = 'block';
+                vaQuestionBox.style.display = 'none';
+                questionText.innerHTML = q.question;
+                optionsDiv.style.display = 'none';
+                qaInputContainer.style.display = 'flex';
+                nextBtn.style.display = 'none';
+                document.getElementById('qa-input').value = answers[currentQuestionIndex] || '';
+                document.getElementById('qa-input').disabled = !!answers[currentQuestionIndex] || currentQuestionIndex < resumeIndex;
+                document.getElementById('qa-submit-btn').disabled = !!answers[currentQuestionIndex] || currentQuestionIndex < resumeIndex;
+            }
+        
+            document.getElementById('feedback').style.display = answers[currentQuestionIndex] ? 'flex' : 'none';
+            document.getElementById('answer-explanation').style.display = answers[currentQuestionIndex] ? 'block' : 'none';
+            if (answers[currentQuestionIndex]) updateFeedbackAndExplanation();
+        
+            MathJax.typesetPromise().catch(err => console.error('MathJax error:', err));
+        }
+        
+        function displayExamModeQuestion() {
+            if (currentQuestionIndex >= questions.length) {
+                examCompleted = true;
+                completeExam();
+                return;
+            }
+        
+            const q = questions[currentQuestionIndex];
+            const questionText = document.getElementById('question-text');
+            const vaQuestionBox = document.getElementById('va-question-box');
+            const optionsDiv = document.getElementById('options');
+            const qaInputContainer = document.getElementById('qa-input-container');
+            const nextBtn = document.getElementById('next-btn');
+            optionsDiv.innerHTML = '';
+        
+            if (q.type === 'VA' || q.type === 'MCQ') {
+                questionText.style.display = q.type === 'MCQ' ? 'block' : 'none';
+                vaQuestionBox.style.display = q.type === 'VA' ? 'block' : 'none';
+                questionText.innerHTML = q.question;
+                vaQuestionBox.innerHTML = q.question;
+                optionsDiv.style.display = 'flex';
+                qaInputContainer.style.display = 'none';
+                nextBtn.style.display = 'block';
+                nextBtn.disabled = false;
+        
+                const options = [
+                    { letter: 'A', value: q.option_a },
+                    { letter: 'B', value: q.option_b },
+                    { letter: 'C', value: q.option_c },
+                    { letter: 'D', value: q.option_d }
+                ];
+                if (q.option_e) options.push({ letter: 'E', value: q.option_e });
+        
+                const row1 = document.createElement('div');
+                row1.className = 'option-row';
+                const row2 = document.createElement('div');
+                row2.className = 'option-row';
+                const row3 = document.createElement('div');
+                row3.className = 'option-row';
+        
+                options.forEach((opt, index) => {
+                    const btn = document.createElement('button');
+                    btn.className = 'option-btn';
+                    btn.innerHTML = `<span class="option-letter">${opt.letter}</span><span class="option-text">${opt.value}</span>`;
+                    if (answers[currentQuestionIndex] === opt.letter) btn.classList.add('selected');
+                    btn.onclick = () => selectAnswer(opt.letter);
+                    if (index < 2) row1.appendChild(btn);
+                    else if (index < 4) row2.appendChild(btn);
+                    else row3.appendChild(btn);
+                });
+        
+                optionsDiv.appendChild(row1);
+                if (row2.children.length) optionsDiv.appendChild(row2);
+                if (row3.children.length) optionsDiv.appendChild(row3);
+            } else if (q.type === 'QA') {
+                questionText.style.display = 'block';
+                vaQuestionBox.style.display = 'none';
+                questionText.innerHTML = q.question;
+                optionsDiv.style.display = 'none';
+                qaInputContainer.style.display = 'flex';
+                nextBtn.style.display = 'block';
+                nextBtn.disabled = false;
+                document.getElementById('qa-input').value = answers[currentQuestionIndex] || '';
+                document.getElementById('qa-input').oninput = (e) => answers[currentQuestionIndex] = e.target.value.trim();
+                document.getElementById('qa-input').disabled = false;
+                document.getElementById('qa-submit-btn').style.display = 'none';
+            }
+        
             document.getElementById('feedback').style.display = 'none';
             document.getElementById('answer-explanation').style.display = 'none';
-            document.getElementById('goto-dropdown').style.display = 'none';
-            document.getElementById('next-btn').style.display = 'none';
-            return;
+        
+            MathJax.typesetPromise().catch(err => console.error('MathJax error:', err));
         }
-
-        const q = questions[currentQuestionIndex];
-        const questionText = document.getElementById('question-text');
-        const vaQuestionBox = document.getElementById('va-question-box');
-        const optionsDiv = document.getElementById('options');
-        const qaInputContainer = document.getElementById('qa-input-container');
-        const nextBtn = document.getElementById('next-btn');
-        optionsDiv.innerHTML = '';
-
-        if (q.type === 'VA' || q.type === 'MCQ') {
-            questionText.style.display = q.type === 'MCQ' ? 'block' : 'none';
-            vaQuestionBox.style.display = q.type === 'VA' ? 'block' : 'none';
-            questionText.innerHTML = q.question;
-            vaQuestionBox.innerHTML = q.question;
-            optionsDiv.style.display = 'flex';
-            qaInputContainer.style.display = 'none';
-            nextBtn.style.display = 'none';
-
-            const options = [
-                { letter: 'A', value: q.option_a },
-                { letter: 'B', value: q.option_b },
-                { letter: 'C', value: q.option_c },
-                { letter: 'D', value: q.option_d }
-            ];
-            if (q.option_e) options.push({ letter: 'E', value: q.option_e });
-
-            const row1 = document.createElement('div');
-            row1.className = 'option-row';
-            const row2 = document.createElement('div');
-            row2.className = 'option-row';
-            const row3 = document.createElement('div');
-            row3.className = 'option-row';
-
-            options.forEach((opt, index) => {
-                const btn = document.createElement('button');
-                btn.className = 'option-btn';
-                btn.innerHTML = `<span class="option-letter">${opt.letter}</span><span class="option-text">${opt.value}</span>`;
-                if (answers[currentQuestionIndex]) {
-                    btn.disabled = true;
-                    btn.classList.add('disabled');
-                    if (opt.letter === q.correct_answer) btn.classList.add('correct');
-                    if (opt.letter === answers[currentQuestionIndex] && opt.letter !== q.correct_answer) btn.classList.add('wrong');
-                } else if (currentQuestionIndex >= resumeIndex) {
-                    btn.onclick = () => checkAnswer(opt.letter, q.correct_answer, q.explanation, opt.value);
-                } else {
-                    btn.disabled = true;
-                    btn.classList.add('disabled');
-                    if (opt.letter === q.correct_answer) btn.classList.add('correct');
-                    if (opt.letter === answers[currentQuestionIndex] && opt.letter !== q.correct_answer) btn.classList.add('wrong');
-                }
-                if (index < 2) row1.appendChild(btn);
-                else if (index < 4) row2.appendChild(btn);
-                else row3.appendChild(btn);
-            });
-
-            optionsDiv.appendChild(row1);
-            if (row2.children.length) optionsDiv.appendChild(row2);
-            if (row3.children.length) optionsDiv.appendChild(row3);
-        } else if (q.type === 'QA') {
-            questionText.style.display = 'block';
-            vaQuestionBox.style.display = 'none';
-            questionText.innerHTML = q.question;
-            optionsDiv.style.display = 'none';
-            qaInputContainer.style.display = 'flex';
-            nextBtn.style.display = 'none';
-            document.getElementById('qa-input').value = answers[currentQuestionIndex] || '';
-            document.getElementById('qa-input').disabled = !!answers[currentQuestionIndex] || currentQuestionIndex < resumeIndex;
-            document.getElementById('qa-submit-btn').disabled = !!answers[currentQuestionIndex] || currentQuestionIndex < resumeIndex;
-        }
-
-        document.getElementById('feedback').style.display = answers[currentQuestionIndex] ? 'flex' : 'none';
-        document.getElementById('answer-explanation').style.display = answers[currentQuestionIndex] ? 'block' : 'none';
-        if (answers[currentQuestionIndex]) updateFeedbackAndExplanation();
-
-        MathJax.typesetPromise().catch(err => console.error('MathJax error:', err));
-    }
-
-    function displayExamModeQuestion() {
-        if (currentQuestionIndex >= questions.length) {
-            examCompleted = true;
-            window.location.href = `/exam/${<%- JSON.stringify(module.id) %>}/complete`;
-            return;
-        }
-
-        const q = questions[currentQuestionIndex];
-        const questionText = document.getElementById('question-text');
-        const vaQuestionBox = document.getElementById('va-question-box');
-        const optionsDiv = document.getElementById('options');
-        const qaInputContainer = document.getElementById('qa-input-container');
-        const nextBtn = document.getElementById('next-btn');
-        optionsDiv.innerHTML = '';
-
-        if (q.type === 'VA' || q.type === 'MCQ') {
-            questionText.style.display = q.type === 'MCQ' ? 'block' : 'none';
-            vaQuestionBox.style.display = q.type === 'VA' ? 'block' : 'none';
-            questionText.innerHTML = q.question;
-            vaQuestionBox.innerHTML = q.question;
-            optionsDiv.style.display = 'flex';
-            qaInputContainer.style.display = 'none';
-            nextBtn.style.display = 'block';
-            nextBtn.disabled = false;
-
-            const options = [
-                { letter: 'A', value: q.option_a },
-                { letter: 'B', value: q.option_b },
-                { letter: 'C', value: q.option_c },
-                { letter: 'D', value: q.option_d }
-            ];
-            if (q.option_e) options.push({ letter: 'E', value: q.option_e });
-
-            const row1 = document.createElement('div');
-            row1.className = 'option-row';
-            const row2 = document.createElement('div');
-            row2.className = 'option-row';
-            const row3 = document.createElement('div');
-            row3.className = 'option-row';
-
-            options.forEach((opt, index) => {
-                const btn = document.createElement('button');
-                btn.className = 'option-btn';
-                btn.innerHTML = `<span class="option-letter">${opt.letter}</span><span class="option-text">${opt.value}</span>`;
-                if (answers[currentQuestionIndex] === opt.letter) btn.classList.add('selected');
-                btn.onclick = () => selectAnswer(opt.letter);
-                if (index < 2) row1.appendChild(btn);
-                else if (index < 4) row2.appendChild(btn);
-                else row3.appendChild(btn);
-            });
-
-            optionsDiv.appendChild(row1);
-            if (row2.children.length) optionsDiv.appendChild(row2);
-            if (row3.children.length) optionsDiv.appendChild(row3);
-        } else if (q.type === 'QA') {
-            questionText.style.display = 'block';
-            vaQuestionBox.style.display = 'none';
-            questionText.innerHTML = q.question;
-            optionsDiv.style.display = 'none';
-            qaInputContainer.style.display = 'flex';
-            nextBtn.style.display = 'block';
-            nextBtn.disabled = false;
-            document.getElementById('qa-input').value = answers[currentQuestionIndex] || '';
-            document.getElementById('qa-input').oninput = (e) => answers[currentQuestionIndex] = e.target.value.trim();
-            document.getElementById('qa-input').disabled = false;
-            document.getElementById('qa-submit-btn').style.display = 'none';
-        }
-
-        document.getElementById('feedback').style.display = 'none';
-        document.getElementById('answer-explanation').style.display = 'none';
-
-        MathJax.typesetPromise().catch(err => console.error('MathJax error:', err));
-    }
-
-    function displayReviewModeQuestion() {
-        if (currentQuestionIndex >= questions.length) {
-            window.location.href = '/index';
-            return;
-        }
-
-        const q = questions[currentQuestionIndex];
-        const questionText = document.getElementById('question-text');
-        const vaQuestionBox = document.getElementById('va-question-box');
-        const optionsDiv = document.getElementById('options');
-        const qaInputContainer = document.getElementById('qa-input-container');
-        optionsDiv.innerHTML = '';
-
-        if (q.type === 'VA' || q.type === 'MCQ') {
-            questionText.style.display = q.type === 'MCQ' ? 'block' : 'none';
-            vaQuestionBox.style.display = q.type === 'VA' ? 'block' : 'none';
-            questionText.innerHTML = q.question;
-            vaQuestionBox.innerHTML = q.question;
-            optionsDiv.style.display = 'flex';
-            qaInputContainer.style.display = 'none';
-
-            const options = [
-                { letter: 'A', value: q.option_a },
-                { letter: 'B', value: q.option_b },
-                { letter: 'C', value: q.option_c },
-                { letter: 'D', value: q.option_d }
-            ];
-            if (q.option_e) options.push({ letter: 'E', value: q.option_e });
-
-            const row1 = document.createElement('div');
-            row1.className = 'option-row';
-            const row2 = document.createElement('div');
-            row2.className = 'option-row';
-            const row3 = document.createElement('div');
-            row3.className = 'option-row';
-
-            options.forEach((opt, index) => {
-                const btn = document.createElement('button');
-                btn.className = 'option-btn disabled';
-                btn.innerHTML = `<span class="option-letter">${opt.letter}</span><span class="option-text">${opt.value}</span>`;
-                const isUserAnswer = answers[currentQuestionIndex] === opt.letter;
-                const isCorrectAnswer = opt.letter === q.correct_answer;
-                if (isCorrectAnswer) btn.classList.add('correct');
-                else if (isUserAnswer && !isCorrectAnswer) btn.classList.add('wrong');
-                if (index < 2) row1.appendChild(btn);
-                else if (index < 4) row2.appendChild(btn);
-                else row3.appendChild(btn);
-            });
-
-            optionsDiv.appendChild(row1);
-            if (row2.children.length) optionsDiv.appendChild(row2);
-            if (row3.children.length) optionsDiv.appendChild(row3);
-        } else if (q.type === 'QA') {
-            questionText.style.display = 'block';
-            vaQuestionBox.style.display = 'none';
-            questionText.innerHTML = q.question;
-            optionsDiv.style.display = 'none';
-            qaInputContainer.style.display = 'flex';
-            document.getElementById('qa-input').value = answers[currentQuestionIndex] || '';
-            document.getElementById('qa-input').disabled = true;
-            document.getElementById('qa-submit-btn').style.display = 'none';
-        }
-
-        document.getElementById('feedback').style.display = 'flex';
-        document.getElementById('answer-explanation').style.display = 'block';
-        updateFeedbackAndExplanation();
-
-        MathJax.typesetPromise().catch(err => console.error('MathJax error:', err));
-    }
-
-    function checkAnswer(selected, correct, explanation, selectedValue) {
-        const q = questions[currentQuestionIndex];
-        const buttons = document.querySelectorAll('.option-btn');
-        buttons.forEach(btn => {
-            btn.disabled = true;
-            btn.classList.add('disabled');
-            if (btn.querySelector('.option-letter').textContent === correct) btn.classList.add('correct');
-        });
-
-        answers[currentQuestionIndex] = selected;
-        skipped[currentQuestionIndex] = false;
-        const feedback = document.getElementById('feedback');
-        const feedbackText = document.getElementById('feedback-text');
-
-        if (selected === correct) {
-            buttons.forEach(btn => {
-                if (btn.querySelector('.option-letter').textContent === selected) btn.classList.add('correct');
-            });
-            feedbackText.innerHTML = 'Correct!';
-            feedback.classList.remove('wrong');
-            feedback.classList.add('correct');
-        } else {
-            buttons.forEach(btn => {
-                if (btn.querySelector('.option-letter').textContent === selected) btn.classList.add('wrong');
-            });
-            feedbackText.innerHTML = 'Wrong!';
-            feedback.classList.remove('correct');
-            feedback.classList.add('wrong');
-        }
-
-        feedback.style.display = 'flex';
-        updateFeedbackAndExplanation();
-
-        const timeSpent = Math.floor((Date.now() - questionStartTime) / 1000);
-        fetch(`/exam/${<%- JSON.stringify(module.id) %>}/save-answer`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ questionId: q.id, answer: selected, time_spent: timeSpent })
-        }).then(response => response.json()).then(data => {
-            if (!data.success) console.error('Failed to save answer:', data.message);
-        }).catch(err => console.error('Save error:', err));
-
-        updateGoToDropdown();
-    }
-
-    function selectAnswer(selected) {
-        answers[currentQuestionIndex] = selected;
-        const buttons = document.querySelectorAll('.option-btn');
-        buttons.forEach(btn => {
-            btn.classList.remove('selected');
-            if (btn.querySelector('.option-letter').textContent === selected) btn.classList.add('selected');
-        });
-        updateGoToDropdown();
-    }
-
-    function submitQAAnswer() {
-        const q = questions[currentQuestionIndex];
-        const userAnswer = document.getElementById('qa-input').value.trim();
-        const correctAnswer = q.correct_answer.trim();
-
-        answers[currentQuestionIndex] = userAnswer;
-        skipped[currentQuestionIndex] = false;
-        const feedback = document.getElementById('feedback');
-        const feedbackText = document.getElementById('feedback-text');
-
-        document.getElementById('qa-input').disabled = true;
-        document.getElementById('qa-submit-btn').disabled = true;
-
-        if (userAnswer === correctAnswer) {
-            feedbackText.innerHTML = 'Correct!';
-            feedback.classList.remove('wrong');
-            feedback.classList.add('correct');
-        } else {
-            feedbackText.innerHTML = 'Wrong!';
-            feedback.classList.remove('correct');
-            feedback.classList.add('wrong');
-        }
-
-        feedback.style.display = 'flex';
-        updateFeedbackAndExplanation();
-
-        const timeSpent = Math.floor((Date.now() - questionStartTime) / 1000);
-        fetch(`/exam/${<%- JSON.stringify(module.id) %>}/save-answer`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ questionId: q.id, answer: userAnswer, time_spent: timeSpent })
-        }).then(response => response.json()).then(data => {
-            if (!data.success) console.error('Failed to save answer:', data.message);
-        }).catch(err => console.error('Save error:', err));
-
-        updateGoToDropdown();
-    }
-
-    function updateFeedbackAndExplanation() {
-        const q = questions[currentQuestionIndex];
-        const feedbackText = document.getElementById('feedback-text');
-        const correctAnswerDiv = document.getElementById('correct-answer');
-        const explanationDiv = document.getElementById('explanation-text');
-
-        if (answers[currentQuestionIndex]) {
-            feedbackText.innerHTML = answers[currentQuestionIndex] === q.correct_answer ? 'Correct!' : 'Wrong!';
-            feedback.classList.remove(answers[currentQuestionIndex] === q.correct_answer ? 'wrong' : 'correct');
-            feedback.classList.add(answers[currentQuestionIndex] === q.correct_answer ? 'correct' : 'wrong');
-        } else {
-            feedbackText.innerHTML = 'Not Answered';
-            feedback.classList.remove('correct', 'wrong');
-        }
-
-        if (q.type === 'QA') {
-            correctAnswerDiv.innerHTML = q.correct_answer;
-        } else {
-            correctAnswerDiv.innerHTML = `${q.correct_answer}: ${q[`option_${q.correct_answer.toLowerCase()}`]}`;
-        }
-        explanationDiv.innerHTML = q.explanation || 'No explanation provided.';
-        document.getElementById('answer-explanation').style.display = 'block';
-
-        MathJax.typesetPromise().catch(err => console.error('MathJax error:', err));
-    }
-
-    function nextQuestion() {
-        if (isExamMode && !isReviewMode) {
+        
+        function displayReviewModeQuestion() {
+            if (currentQuestionIndex >= questions.length) {
+                window.location.href = '/index';
+                return;
+            }
+        
             const q = questions[currentQuestionIndex];
+            const questionText = document.getElementById('question-text');
+            const vaQuestionBox = document.getElementById('va-question-box');
+            const optionsDiv = document.getElementById('options');
+            const qaInputContainer = document.getElementById('qa-input-container');
+            optionsDiv.innerHTML = '';
+        
+            if (q.type === 'VA' || q.type === 'MCQ') {
+                questionText.style.display = q.type === 'MCQ' ? 'block' : 'none';
+                vaQuestionBox.style.display = q.type === 'VA' ? 'block' : 'none';
+                questionText.innerHTML = q.question;
+                vaQuestionBox.innerHTML = q.question;
+                optionsDiv.style.display = 'flex';
+                qaInputContainer.style.display = 'none';
+        
+                const options = [
+                    { letter: 'A', value: q.option_a },
+                    { letter: 'B', value: q.option_b },
+                    { letter: 'C', value: q.option_c },
+                    { letter: 'D', value: q.option_d }
+                ];
+                if (q.option_e) options.push({ letter: 'E', value: q.option_e });
+        
+                const row1 = document.createElement('div');
+                row1.className = 'option-row';
+                const row2 = document.createElement('div');
+                row2.className = 'option-row';
+                const row3 = document.createElement('div');
+                row3.className = 'option-row';
+        
+                options.forEach((opt, index) => {
+                    const btn = document.createElement('button');
+                    btn.className = 'option-btn disabled';
+                    btn.innerHTML = `<span class="option-letter">${opt.letter}</span><span class="option-text">${opt.value}</span>`;
+                    const isUserAnswer = answers[currentQuestionIndex] === opt.letter;
+                    const isCorrectAnswer = opt.letter === q.correct_answer;
+                    if (isCorrectAnswer) btn.classList.add('correct');
+                    else if (isUserAnswer && !isCorrectAnswer) btn.classList.add('wrong');
+                    if (index < 2) row1.appendChild(btn);
+                    else if (index < 4) row2.appendChild(btn);
+                    else row3.appendChild(btn);
+                });
+        
+                optionsDiv.appendChild(row1);
+                if (row2.children.length) optionsDiv.appendChild(row2);
+                if (row3.children.length) optionsDiv.appendChild(row3);
+            } else if (q.type === 'QA') {
+                questionText.style.display = 'block';
+                vaQuestionBox.style.display = 'none';
+                questionText.innerHTML = q.question;
+                optionsDiv.style.display = 'none';
+                qaInputContainer.style.display = 'flex';
+                document.getElementById('qa-input').value = answers[currentQuestionIndex] || '';
+                document.getElementById('qa-input').disabled = true;
+                document.getElementById('qa-submit-btn').style.display = 'none';
+            }
+        
+            document.getElementById('feedback').style.display = 'flex';
+            document.getElementById('answer-explanation').style.display = 'block';
+            updateFeedbackAndExplanation();
+        
+            MathJax.typesetPromise().catch(err => console.error('MathJax error:', err));
+        }
+        
+        function checkAnswer(selected, correct, explanation, selectedValue) {
+            const q = questions[currentQuestionIndex];
+            const buttons = document.querySelectorAll('.option-btn');
+            buttons.forEach(btn => {
+                btn.disabled = true;
+                btn.classList.add('disabled');
+                if (btn.querySelector('.option-letter').textContent === correct) btn.classList.add('correct');
+            });
+        
+            answers[currentQuestionIndex] = selected;
+            skipped[currentQuestionIndex] = false;
+            const feedback = document.getElementById('feedback');
+            const feedbackText = document.getElementById('feedback-text');
+        
+            if (selected === correct) {
+                buttons.forEach(btn => {
+                    if (btn.querySelector('.option-letter').textContent === selected) btn.classList.add('correct');
+                });
+                feedbackText.innerHTML = 'Correct!';
+                feedback.classList.remove('wrong');
+                feedback.classList.add('correct');
+            } else {
+                buttons.forEach(btn => {
+                    if (btn.querySelector('.option-letter').textContent === selected) btn.classList.add('wrong');
+                });
+                feedbackText.innerHTML = 'Wrong!';
+                feedback.classList.remove('correct');
+                feedback.classList.add('wrong');
+            }
+        
+            feedback.style.display = 'flex';
+            updateFeedbackAndExplanation();
+        
             const timeSpent = Math.floor((Date.now() - questionStartTime) / 1000);
             fetch(`/exam/${<%- JSON.stringify(module.id) %>}/save-answer`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ questionId: q.id, answer: answers[currentQuestionIndex] || null, time_spent: timeSpent })
+                body: JSON.stringify({ questionId: q.id, answer: selected, time_spent: timeSpent })
             }).then(response => response.json()).then(data => {
                 if (!data.success) console.error('Failed to save answer:', data.message);
             }).catch(err => console.error('Save error:', err));
-
-            const lastQA = sectionIndices.QA + questions.filter(q => q.type === 'QA').length - 1;
-            const lastMCQ = sectionIndices.MCQ + questions.filter(q => q.type === 'MCQ').length - 1;
-            const isLastInSection = (currentSection === 'QA' && currentQuestionIndex === lastQA) ||
-                                   (currentSection === 'MCQ' && currentQuestionIndex === lastMCQ) ||
-                                   (currentSection === 'VA' && currentQuestionIndex === questions.length - 1);
-
-            if (isLastInSection && timeRemaining > 0) {
-                // Stay on the last question until timer runs out
-                displayExamModeQuestion();
-            } else if (currentQuestionIndex < questions.length - 1) {
-                currentQuestionIndex++;
-                displayExamModeQuestion();
-            }
-            // Section completion only happens via timer in startTimer()
-        } else if (isReviewMode) {
-            if (currentQuestionIndex < questions.length - 1) {
-                currentQuestionIndex++;
-                displayReviewModeQuestion();
-            } else {
-                window.location.href = '/index';
-            }
-        } else {
-            currentQuestionIndex++;
-            displayNormalModeQuestion();
-        }
-    }
-
-    function prevQuestion() {
-        if (isReviewMode && currentQuestionIndex > 0) {
-            currentQuestionIndex--;
-            displayReviewModeQuestion();
-        }
-    }
-
-    function updateNavigationButtons() {
-        if (!isReviewMode) return;
-        document.getElementById('prev-btn').disabled = currentQuestionIndex === 0;
-        document.getElementById('next-btn').disabled = currentQuestionIndex === questions.length - 1;
-        if (currentQuestionIndex === questions.length - 1) {
-            document.getElementById('next-btn').innerHTML = 'Finish';
-        } else {
-            document.getElementById('next-btn').innerHTML = 'Next →';
-        }
-    }
-
-    function skipQuestion() {
-        if (!isExamMode && !isReviewMode && currentQuestionIndex < questions.length - 1) {
-            if (!answers[currentQuestionIndex] && currentQuestionIndex >= resumeIndex) {
-                skipped[currentQuestionIndex] = true;
-            }
-            currentQuestionIndex++;
-            displayQuestion();
+        
             updateGoToDropdown();
         }
-    }
-
-    function completeSection() {
-        if (!isExamMode || isReviewMode) return;
-        const lastQA = sectionIndices.QA + questions.filter(q => q.type === 'QA').length - 1;
-        const lastMCQ = sectionIndices.MCQ + questions.filter(q => q.type === 'MCQ').length - 1;
-        const sectionEnd = currentSection === 'QA' ? lastQA + 1 : currentSection === 'MCQ' ? lastMCQ + 1 : questions.length;
-        const sectionAnswers = answers.slice(sectionIndices[currentSection], sectionEnd);
-        const timeSpent = timeLimit - timeRemaining;
-
-        fetch(`/exam/${<%- JSON.stringify(module.id) %>}/complete-section`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ section: currentSection, answers: sectionAnswers, time_spent: timeSpent })
-        }).then(response => response.json()).then(data => {
-            if (data.success) {
-                if (data.nextSection) {
-                    currentSection = data.nextSection;
-                    currentQuestionIndex = sectionIndices[currentSection];
-                    timeRemaining = <%- JSON.stringify(module.time_limit || 2400) %>;
-                    clearInterval(timerInterval);
-                    showNextSectionPrompt();
+        
+        function selectAnswer(selected) {
+            answers[currentQuestionIndex] = selected;
+            const buttons = document.querySelectorAll('.option-btn');
+            buttons.forEach(btn => {
+                btn.classList.remove('selected');
+                if (btn.querySelector('.option-letter').textContent === selected) btn.classList.add('selected');
+            });
+            updateGoToDropdown();
+        }
+        
+        function submitQAAnswer() {
+            const q = questions[currentQuestionIndex];
+            const userAnswer = document.getElementById('qa-input').value.trim();
+            const correctAnswer = q.correct_answer.trim();
+        
+            answers[currentQuestionIndex] = userAnswer;
+            skipped[currentQuestionIndex] = false;
+            const feedback = document.getElementById('feedback');
+            const feedbackText = document.getElementById('feedback-text');
+        
+            document.getElementById('qa-input').disabled = true;
+            document.getElementById('qa-submit-btn').disabled = true;
+        
+            if (userAnswer === correctAnswer) {
+                feedbackText.innerHTML = 'Correct!';
+                feedback.classList.remove('wrong');
+                feedback.classList.add('correct');
+            } else {
+                feedbackText.innerHTML = 'Wrong!';
+                feedback.classList.remove('correct');
+                feedback.classList.add('wrong');
+            }
+        
+            feedback.style.display = 'flex';
+            updateFeedbackAndExplanation();
+        
+            const timeSpent = Math.floor((Date.now() - questionStartTime) / 1000);
+            fetch(`/exam/${<%- JSON.stringify(module.id) %>}/save-answer`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ questionId: q.id, answer: userAnswer, time_spent: timeSpent })
+            }).then(response => response.json()).then(data => {
+                if (!data.success) console.error('Failed to save answer:', data.message);
+            }).catch(err => console.error('Save error:', err));
+        
+            updateGoToDropdown();
+        }
+        
+        function updateFeedbackAndExplanation() {
+            const q = questions[currentQuestionIndex];
+            const feedbackText = document.getElementById('feedback-text');
+            const correctAnswerDiv = document.getElementById('correct-answer');
+            const explanationDiv = document.getElementById('explanation-text');
+        
+            if (answers[currentQuestionIndex]) {
+                feedbackText.innerHTML = answers[currentQuestionIndex] === q.correct_answer ? 'Correct!' : 'Wrong!';
+                feedback.classList.remove(answers[currentQuestionIndex] === q.correct_answer ? 'wrong' : 'correct');
+                feedback.classList.add(answers[currentQuestionIndex] === q.correct_answer ? 'correct' : 'wrong');
+            } else {
+                feedbackText.innerHTML = 'Not Answered';
+                feedback.classList.remove('correct', 'wrong');
+            }
+        
+            if (q.type === 'QA') {
+                correctAnswerDiv.innerHTML = q.correct_answer;
+            } else {
+                correctAnswerDiv.innerHTML = `${q.correct_answer}: ${q[`option_${q.correct_answer.toLowerCase()}`]}`;
+            }
+            explanationDiv.innerHTML = q.explanation || 'No explanation provided.';
+            document.getElementById('answer-explanation').style.display = 'block';
+        
+            MathJax.typesetPromise().catch(err => console.error('MathJax error:', err));
+        }
+        
+        function nextQuestion() {
+            if (isExamMode && !isReviewMode) {
+                const lastQA = sectionIndices.QA + questions.filter(q => q.type === 'QA').length - 1;
+                const lastMCQ = sectionIndices.MCQ + questions.filter(q => q.type === 'MCQ').length - 1;
+                const isLastInSection = (currentSection === 'QA' && currentQuestionIndex === lastQA) ||
+                                       (currentSection === 'MCQ' && currentQuestionIndex === lastMCQ) ||
+                                       (currentSection === 'VA' && currentQuestionIndex === questions.length - 1);
+        
+                if (isLastInSection && timeRemaining > 0) {
+                    displayExamModeQuestion();
+                } else if (currentQuestionIndex < questions.length - 1) {
+                    currentQuestionIndex++;
+                    displayExamModeQuestion();
+                }
+            } else if (isReviewMode) {
+                if (currentQuestionIndex < questions.length - 1) {
+                    currentQuestionIndex++;
+                    displayReviewModeQuestion();
                 } else {
-                    examCompleted = true;
-                    window.location.href = `/exam/${<%- JSON.stringify(module.id) %>}/complete`;
+                    window.location.href = '/index';
                 }
             } else {
-                alert('Failed to save section answers: ' + data.message);
+                currentQuestionIndex++;
+                displayNormalModeQuestion();
             }
-        }).catch(err => {
-            console.error('Section completion error:', err);
-            alert('Error saving section');
-        });
-    }
-
-    function goHome() {
-        if (isExamMode && !examCompleted && !isReviewMode) return;
-        window.location.href = '/index';
-    }
-
-    function toggleGoTo() {
-        const dropdown = document.getElementById('goto-dropdown');
-        if (dropdown.style.display === 'block') dropdown.style.display = 'none';
-        else {
-            updateGoToDropdown();
-            dropdown.style.display = 'block';
         }
-    }
-
-    function updateGoToDropdown() {
-        const dropdown = document.getElementById('goto-dropdown');
-        dropdown.innerHTML = '';
-
-        if (isExamMode && !isReviewMode) {
-            const filteredQuestions = questions.filter(q => q.type === currentSection);
-            if (filteredQuestions.length > 0) {
-                const section = document.createElement('div');
-                section.className = 'goto-section';
-                section.innerHTML = `<h3>${currentSection}</h3>`;
-                filteredQuestions.forEach((q, index) => {
-                    const globalIndex = questions.indexOf(q);
-                    const item = document.createElement('div');
-                    item.className = 'goto-item';
-                    if (skipped[globalIndex]) item.className += ' skipped';
-                    item.innerHTML = `Question ${index + 1}${answers[globalIndex] ? ' ✓' : ''}`;
-                    item.onclick = () => {
-                        currentQuestionIndex = globalIndex;
-                        displayExamModeQuestion();
-                        dropdown.style.display = 'none';
-                    };
-                    section.appendChild(item);
-                });
-                dropdown.appendChild(section);
+        
+        function prevQuestion() {
+            if (isReviewMode && currentQuestionIndex > 0) {
+                currentQuestionIndex--;
+                displayReviewModeQuestion();
             }
+        }
+        
+        function updateNavigationButtons() {
+            if (!isReviewMode) return;
+            document.getElementById('prev-btn').disabled = currentQuestionIndex === 0;
+            document.getElementById('next-btn').disabled = currentQuestionIndex === questions.length - 1;
+            if (currentQuestionIndex === questions.length - 1) {
+                document.getElementById('next-btn').innerHTML = 'Finish';
+            } else {
+                document.getElementById('next-btn').innerHTML = 'Next →';
+            }
+        }
+        
+        function skipQuestion() {
+            if (!isExamMode && !isReviewMode && currentQuestionIndex < questions.length - 1) {
+                if (!answers[currentQuestionIndex] && currentQuestionIndex >= resumeIndex) {
+                    skipped[currentQuestionIndex] = true;
+                }
+                currentQuestionIndex++;
+                displayQuestion();
+                updateGoToDropdown();
+            }
+        }
+        
+        function completeSection() {
+            if (!isExamMode || isReviewMode) return;
+            clearInterval(timerInterval);
+            const lastQA = sectionIndices.QA + questions.filter(q => q.type === 'QA').length - 1;
+            const lastMCQ = sectionIndices.MCQ + questions.filter(q => q.type === 'MCQ').length - 1;
+        
+            if (currentSection === 'QA') {
+                currentSection = 'MCQ';
+                currentQuestionIndex = sectionIndices.MCQ;
+                timeRemaining = <%- JSON.stringify(module.time_limit || 2400) %>;
+                showNextSectionPrompt();
+            } else if (currentSection === 'MCQ') {
+                currentSection = 'VA';
+                currentQuestionIndex = sectionIndices.VA;
+                timeRemaining = <%- JSON.stringify(module.time_limit || 2400) %>;
+                showNextSectionPrompt();
+            } else if (currentSection === 'VA') {
+                completeExam();
+            }
+        }
+        
+        function completeExam() {
+    if (!isExamMode || isReviewMode) return;
+    const sectionCounts = {
+        QA: questions.filter(q => q.type === 'QA').length,
+        MCQ: questions.filter(q => q.type === 'MCQ').length,
+        VA: questions.filter(q => q.type === 'VA').length
+    };
+    const totalTime = <%- JSON.stringify(module.time_limit || 2400) %>;
+    const timePerSection = totalTime;
+    const timeSpent = Math.floor((Date.now() - sectionStartTime) / 1000);
+
+    const answersWithTime = answers.map((answer, i) => {
+        const q = questions[i];
+        let sectionTimeSpent;
+        if (q.type === 'QA') sectionTimeSpent = i === sectionIndices.QA ? timePerSection - timeRemaining : timePerSection / sectionCounts.QA;
+        else if (q.type === 'MCQ') sectionTimeSpent = i === sectionIndices.MCQ ? timePerSection - timeRemaining : timePerSection / sectionCounts.MCQ;
+        else sectionTimeSpent = i === sectionIndices.VA ? timeSpent : timePerSection / sectionCounts.VA;
+        return { questionId: q.id, answer, time_spent: Math.round(sectionTimeSpent) };
+    });
+    console.log('Sending answers to server:', answersWithTime);
+
+    fetch(`/exam/${<%- JSON.stringify(module.id) %>}/complete`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ answers: answersWithTime })
+    }).then(response => {
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+        return response.json();
+    }).then(data => {
+        if (data.success) {
+            examCompleted = true;
+            window.location.href = data.redirect; // Use the redirect from the server
         } else {
-            const types = ['QA', 'MCQ', 'VA'];
-            types.forEach(type => {
-                const filteredQuestions = questions.filter(q => q.type === type);
+            console.error('Server response:', data);
+            alert('Failed to save exam answers: ' + data.message);
+        }
+    }).catch(err => {
+        console.error('Exam completion error:', err);
+        alert('Error saving exam: ' + err.message);
+    });
+}
+        
+        function goHome() {
+            if (isExamMode && !examCompleted && !isReviewMode) return;
+            window.location.href = '/index';
+        }
+        
+        function toggleGoTo() {
+            const dropdown = document.getElementById('goto-dropdown');
+            if (dropdown.style.display === 'block') dropdown.style.display = 'none';
+            else {
+                updateGoToDropdown();
+                dropdown.style.display = 'block';
+            }
+        }
+        
+        function updateGoToDropdown() {
+            const dropdown = document.getElementById('goto-dropdown');
+            dropdown.innerHTML = '';
+        
+            if (isExamMode && !isReviewMode) {
+                const filteredQuestions = questions.filter(q => q.type === currentSection);
                 if (filteredQuestions.length > 0) {
                     const section = document.createElement('div');
                     section.className = 'goto-section';
-                    section.innerHTML = `<h3>${type}</h3>`;
+                    section.innerHTML = `<h3>${currentSection}</h3>`;
                     filteredQuestions.forEach((q, index) => {
                         const globalIndex = questions.indexOf(q);
                         const item = document.createElement('div');
                         item.className = 'goto-item';
-                        if (!isReviewMode && globalIndex > resumeIndex && !answers[globalIndex]) item.className += ' unattempted';
                         if (skipped[globalIndex]) item.className += ' skipped';
                         item.innerHTML = `Question ${index + 1}${answers[globalIndex] ? ' ✓' : ''}`;
-                        if (isReviewMode || globalIndex <= resumeIndex || answers[globalIndex] || skipped[globalIndex]) {
-                            item.onclick = () => {
-                                currentQuestionIndex = globalIndex;
-                                if (isReviewMode) displayReviewModeQuestion();
-                                else displayNormalModeQuestion();
-                                dropdown.style.display = 'none';
-                            };
-                        }
+                        item.onclick = () => {
+                            currentQuestionIndex = globalIndex;
+                            displayExamModeQuestion();
+                            dropdown.style.display = 'none';
+                        };
                         section.appendChild(item);
                     });
                     dropdown.appendChild(section);
                 }
-            });
-        }
-    }
-
-    function startTimer() {
-        if (!isExamMode || isReviewMode) return;
-        document.getElementById('timer').style.display = 'block';
-        timerInterval = setInterval(() => {
-            timeRemaining--;
-            const minutes = Math.floor(timeRemaining / 60);
-            const seconds = timeRemaining % 60;
-            document.getElementById('timer').innerHTML = `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
-            if (timeRemaining <= 0) {
-                clearInterval(timerInterval);
-                completeSection(); // Only move to next section when timer hits 0
+            } else {
+                const types = ['QA', 'MCQ', 'VA'];
+                types.forEach(type => {
+                    const filteredQuestions = questions.filter(q => q.type === type);
+                    if (filteredQuestions.length > 0) {
+                        const section = document.createElement('div');
+                        section.className = 'goto-section';
+                        section.innerHTML = `<h3>${type}</h3>`;
+                        filteredQuestions.forEach((q, index) => {
+                            const globalIndex = questions.indexOf(q);
+                            const item = document.createElement('div');
+                            item.className = 'goto-item';
+                            if (!isReviewMode && globalIndex > resumeIndex && !answers[globalIndex]) item.className += ' unattempted';
+                            if (skipped[globalIndex]) item.className += ' skipped';
+                            item.innerHTML = `Question ${index + 1}${answers[globalIndex] ? ' ✓' : ''}`;
+                            if (isReviewMode || globalIndex <= resumeIndex || answers[globalIndex] || skipped[globalIndex]) {
+                                item.onclick = () => {
+                                    currentQuestionIndex = globalIndex;
+                                    if (isReviewMode) displayReviewModeQuestion();
+                                    else displayNormalModeQuestion();
+                                    dropdown.style.display = 'none';
+                                };
+                            }
+                            section.appendChild(item);
+                        });
+                        dropdown.appendChild(section);
+                    }
+                });
             }
-        }, 1000);
-    }
-
-    function showIntroScreen() {
-        if (!isExamMode || isReviewMode) return;
-        const introScreen = document.getElementById('intro-screen');
-        const qaCount = questions.filter(q => q.type === 'QA').length;
-        const mcqCount = questions.filter(q => q.type === 'MCQ').length;
-        const vaCount = questions.filter(q => q.type === 'VA').length;
-        introScreen.innerHTML = `
-            <h1>Exam Mode</h1>
-            <p>You are about to start an exam with ${qaCount + mcqCount + vaCount} questions across 3 sections:</p>
-            <p>- QA: ${qaCount} questions</p>
-            <p>- MCQ: ${mcqCount} questions</p>
-            <p>- VA: ${vaCount} questions</p>
-            <p>Each section has a ${timeLimit / 60}-minute time limit. You must wait until the timer ends to proceed to the next section.</p>
-            <button class="begin-btn" onclick="startSection('QA')">Begin</button>
-        `;
-        introScreen.style.display = 'block';
-        document.getElementById('question-text').style.display = 'none';
-        document.getElementById('va-question-box').style.display = 'none';
-        document.getElementById('options').style.display = 'none';
-        document.getElementById('qa-input-container').style.display = 'none';
-        document.getElementById('feedback').style.display = 'none';
-        document.getElementById('answer-explanation').style.display = 'none';
-        document.getElementById('next-btn').style.display = 'none';
-        document.getElementById('timer').style.display = 'none';
-    }
-
-    function showNextSectionPrompt() {
-        if (!isExamMode || isReviewMode) return;
-        const introScreen = document.getElementById('intro-screen');
-        const count = questions.filter(q => q.type === currentSection).length;
-        introScreen.innerHTML = `
-            <h1>Start Section: ${currentSection}</h1>
-            <p>This section has ${count} questions.</p>
-            <p>You will have ${timeLimit / 60} minutes to complete it. You must wait until the timer ends to proceed.</p>
-            <button class="begin-btn" onclick="startSection('${currentSection}')">Begin</button>
-        `;
-        introScreen.style.display = 'block';
-        document.getElementById('question-text').style.display = 'none';
-        document.getElementById('va-question-box').style.display = 'none';
-        document.getElementById('options').style.display = 'none';
-        document.getElementById('qa-input-container').style.display = 'none';
-        document.getElementById('feedback').style.display = 'none';
-        document.getElementById('answer-explanation').style.display = 'none';
-        document.getElementById('next-btn').style.display = 'none';
-        document.getElementById('timer').style.display = 'none';
-    }
-
-    function startSection(section) {
-        if (!isExamMode || isReviewMode) return;
-        currentSection = section;
-        currentQuestionIndex = sectionIndices[section];
-        timeRemaining = <%- JSON.stringify(module.time_limit || 2400) %>;
-        document.getElementById('intro-screen').style.display = 'none';
-        startTimer();
-        displayExamModeQuestion();
-        disableBackNavigation();
-    }
-
-    window.addEventListener('load', () => {
-        if (isReviewMode) {
-            displayReviewModeQuestion();
-            enableBackNavigation();
-        } else if (isExamMode) {
-            showIntroScreen();
+        }
+        
+        function startTimer() {
+            if (!isExamMode || isReviewMode) return;
+            document.getElementById('timer').style.display = 'block';
+            timerInterval = setInterval(() => {
+                timeRemaining--;
+                const minutes = Math.floor(timeRemaining / 60);
+                const seconds = timeRemaining % 60;
+                document.getElementById('timer').innerHTML = `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
+                if (timeRemaining <= 0) {
+                    clearInterval(timerInterval);
+                    completeSection();
+                }
+            }, 1000);
+        }
+        
+        function showIntroScreen() {
+            if (!isExamMode || isReviewMode) return;
+            const introScreen = document.getElementById('intro-screen');
+            const qaCount = questions.filter(q => q.type === 'QA').length;
+            const mcqCount = questions.filter(q => q.type === 'MCQ').length;
+            const vaCount = questions.filter(q => q.type === 'VA').length;
+            introScreen.innerHTML = `
+                <h1>Exam Mode</h1>
+                <p>You are about to start an exam with ${qaCount + mcqCount + vaCount} questions across 3 sections:</p>
+                <p>- QA: ${qaCount} questions</p>
+                <p>- MCQ: ${mcqCount} questions</p>
+                <p>- VA: ${vaCount} questions</p>
+                <p>Each section has a ${timeLimit / 60}-minute time limit. You must wait until the timer ends to proceed to the next section.</p>
+                <button class="begin-btn" onclick="startSection('QA')">Begin</button>
+            `;
+            introScreen.style.display = 'block';
+            document.getElementById('question-text').style.display = 'none';
+            document.getElementById('va-question-box').style.display = 'none';
+            document.getElementById('options').style.display = 'none';
+            document.getElementById('qa-input-container').style.display = 'none';
+            document.getElementById('feedback').style.display = 'none';
+            document.getElementById('answer-explanation').style.display = 'none';
+            document.getElementById('next-btn').style.display = 'none';
+            document.getElementById('timer').style.display = 'none';
+        }
+        
+        function showNextSectionPrompt() {
+            if (!isExamMode || isReviewMode) return;
+            const introScreen = document.getElementById('intro-screen');
+            const count = questions.filter(q => q.type === currentSection).length;
+            introScreen.innerHTML = `
+                <h1>Start Section: ${currentSection}</h1>
+                <p>This section has ${count} questions.</p>
+                <p>You will have ${timeLimit / 60} minutes to complete it. You must wait until the timer ends to proceed.</p>
+                <button class="begin-btn" onclick="startSection('${currentSection}')">Begin</button>
+            `;
+            introScreen.style.display = 'block';
+            document.getElementById('question-text').style.display = 'none';
+            document.getElementById('va-question-box').style.display = 'none';
+            document.getElementById('options').style.display = 'none';
+            document.getElementById('qa-input-container').style.display = 'none';
+            document.getElementById('feedback').style.display = 'none';
+            document.getElementById('answer-explanation').style.display = 'none';
+            document.getElementById('next-btn').style.display = 'none';
+            document.getElementById('timer').style.display = 'none';
+        }
+        
+        function startSection(section) {
+            if (!isExamMode || isReviewMode) return;
+            currentSection = section;
+            currentQuestionIndex = sectionIndices[section];
+            timeRemaining = <%- JSON.stringify(module.time_limit || 2400) %>;
+            sectionStartTime = Date.now();
+            document.getElementById('intro-screen').style.display = 'none';
+            startTimer();
+            displayExamModeQuestion();
             disableBackNavigation();
-        } else {
-            displayNormalModeQuestion();
-            enableBackNavigation();
         }
-        updateGoToDropdown();
-    });
-
-    document.addEventListener('click', (event) => {
-        const dropdown = document.getElementById('goto-dropdown');
-        const gotoButton = document.querySelector('.nav-btn[onclick="toggleGoTo()"]');
-        if (dropdown.style.display === 'block' && !dropdown.contains(event.target) && !gotoButton.contains(event.target)) {
-            dropdown.style.display = 'none';
+        
+        window.addEventListener('load', () => {
+            if (isReviewMode) {
+                displayReviewModeQuestion();
+                enableBackNavigation();
+            } else if (isExamMode) {
+                showIntroScreen();
+                disableBackNavigation();
+            } else {
+                displayNormalModeQuestion();
+                enableBackNavigation();
+            }
+            updateGoToDropdown();
+        });
+        
+        document.addEventListener('click', (event) => {
+            const dropdown = document.getElementById('goto-dropdown');
+            const gotoButton = document.querySelector('.nav-btn[onclick="toggleGoTo()"]');
+            if (dropdown.style.display === 'block' && !dropdown.contains(event.target) && !gotoButton.contains(event.target)) {
+                dropdown.style.display = 'none';
+            }
+        });
+        
+        if (!isReviewMode) {
+            setInterval(() => {
+                fetch('/keep-alive', {
+                    method: 'GET',
+                    credentials: 'include'
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (!data.success) console.warn('Keep-alive failed:', data.message);
+                })
+                .catch(err => console.error('Keep-alive error:', err));
+            }, 10 * 60 * 1000);
         }
-    });
-
-    if (!isReviewMode) {
-        setInterval(() => {
-            fetch('/keep-alive', {
-                method: 'GET',
-                credentials: 'include'
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (!data.success) console.warn('Keep-alive failed:', data.message);
-            })
-            .catch(err => console.error('Keep-alive error:', err));
-        }, 10 * 60 * 1000);
-    }
-</script>
+        </script>
+    
 </body>
 </html>
