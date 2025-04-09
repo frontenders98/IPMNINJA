@@ -683,24 +683,25 @@ app.get('/dashboard', ensureUserAuthenticated, async (req, res) => {
         const correctSums = parseInt(summary.correct_sums) || 0;
         const wrongSums = parseInt(summary.wrong_sums) || 0;
 
-        const moduleStatsResult = await pool.query(
-            `SELECT 
-                m.id, m.name, 
-                COUNT(ua.*) as total_sums,
-                SUM(CASE WHEN ua.is_correct = true THEN 1 ELSE 0 END) as correct_sums,
-                SUM(CASE WHEN ua.is_correct = false AND ua.answer IS NOT NULL THEN 1 ELSE 0 END) as wrong_sums,
-                COUNT(q.*) as total_questions,
-                SUM(CASE WHEN ua.is_correct = true THEN 4 
-                        WHEN ua.is_correct = false AND ua.answer IS NOT NULL AND q.type IN ('MCQ', 'VA') THEN -1 
-                        ELSE 0 END) as score,
-                SUM(ua.time_spent) as time_spent
-             FROM modules m
-             LEFT JOIN questions q ON q.module_id = m.id
-             LEFT JOIN user_answers ua ON ua.question_id = q.id AND ua.user_id = $1
-             GROUP BY m.id, m.name
-             ORDER BY m.id`,
-            [req.session.userId]
-        );
+const moduleStatsResult = await pool.query(
+    `SELECT 
+        m.id, m.name, 
+        COUNT(ua.*) as total_sums,
+        SUM(CASE WHEN ua.is_correct = true THEN 1 ELSE 0 END) as correct_sums,
+        SUM(CASE WHEN ua.is_correct = false AND ua.answer IS NOT NULL THEN 1 ELSE 0 END) as wrong_sums,
+        COUNT(q.*) as total_questions,
+        SUM(CASE WHEN ua.is_correct = true THEN 4 
+                WHEN ua.is_correct = false AND ua.answer IS NOT NULL AND q.type IN ('MCQ', 'VA') THEN -1 
+                WHEN ua.is_correct = false AND ua.answer IS NOT NULL AND q.type = 'QA' THEN 0 
+                ELSE 0 END) as score,
+        SUM(ua.time_spent) as time_spent
+     FROM modules m
+     LEFT JOIN questions q ON q.module_id = m.id
+     LEFT JOIN user_answers ua ON ua.question_id = q.id AND ua.user_id = $1
+     GROUP BY m.id, m.name
+     ORDER BY m.id`,
+    [req.session.userId]
+);
 
         const moduleStats = moduleStatsResult.rows.map(row => ({
             id: row.id,
