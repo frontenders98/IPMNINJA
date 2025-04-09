@@ -332,7 +332,13 @@ app.post('/admin/add-question/:moduleId', ensureAdminAuthenticated, async (req, 
     const moduleId = parseInt(req.params.moduleId);
     const { type, question, option_a, option_b, option_c, option_d, option_e, correct_answer_qa, correct_answer_mcq_va, explanation, tags } = req.body;
     const correct_answer = type === 'QA' ? correct_answer_qa : correct_answer_mcq_va;
-    if (!type || !question || !correct_answer) return res.status(400).json({ success: false, message: 'Missing required fields' });
+
+    console.log('Request to add question:', { moduleId, body: req.body }); // Debug log
+
+    if (!type || !question || !correct_answer) {
+        return res.status(400).json({ success: false, message: 'Missing required fields' });
+    }
+
     try {
         const result = await pool.query(
             `INSERT INTO questions (module_id, type, question, option_a, option_b, option_c, option_d, option_e, correct_answer, explanation, tags) 
@@ -342,7 +348,11 @@ app.post('/admin/add-question/:moduleId', ensureAdminAuthenticated, async (req, 
         res.json({ success: true, id: result.rows[0].id });
     } catch (err) {
         console.error('Add question error:', err.stack);
-        res.status(500).json({ success: false, message: 'Server error' });
+        if (err.code === '23505') { // PostgreSQL duplicate key error
+            res.status(500).json({ success: false, message: 'Server error: Duplicate question ID conflict' });
+        } else {
+            res.status(500).json({ success: false, message: `Server error: ${err.message}` });
+        }
     }
 });
 
