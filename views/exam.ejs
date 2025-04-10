@@ -873,16 +873,12 @@
             MathJax.typesetPromise().catch(err => console.error('MathJax error:', err));
         }
         
-        function canCompleteSection() {
-            return isExamMode && !isReviewMode && timeRemaining <= 0;
-        }
-        
         function nextQuestion() {
             if (isExamMode && !isReviewMode) {
                 const lastQA = sectionIndices.QA === -1 ? -1 : sectionIndices.QA + questions.filter(q => q.type === 'QA').length - 1;
                 const lastMCQ = sectionIndices.MCQ === -1 ? -1 : sectionIndices.MCQ + questions.filter(q => q.type === 'MCQ').length - 1;
                 if ((currentQuestionIndex === lastQA && currentSection === 'QA') || (currentQuestionIndex === lastMCQ && currentSection === 'MCQ')) {
-                    if (canCompleteSection()) {
+                    if (timeRemaining <= 0) {
                         completeSection();
                     } else {
                         alert('You must wait until the timer ends to proceed to the next section.');
@@ -1030,7 +1026,7 @@
                 if (q.type === 'QA') sectionTimeSpent = i === sectionIndices.QA ? timePerSection - timeRemaining : timePerSection / sectionCounts.QA;
                 else if (q.type === 'MCQ') sectionTimeSpent = i === sectionIndices.MCQ ? timePerSection - timeRemaining : timePerSection / sectionCounts.MCQ;
                 else sectionTimeSpent = i === sectionIndices.VA ? timeSpent : timePerSection / sectionCounts.VA;
-                return { questionId: q.id, answer, time_spent: Math.round(section GothicTimeSpent) };
+                return { questionId: q.id, answer, time_spent: Math.round(sectionTimeSpent) };
             });
             console.log('Sending answers to server:', answersWithTime);
         
