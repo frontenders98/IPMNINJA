@@ -93,7 +93,7 @@
         }
         .graph-card {
             grid-area: graph;
-            height: 300px; /* Fixed height for the graph card */
+            height: 300px;
         }
         .graph-card h2 {
             font-size: 1.3em;
@@ -120,7 +120,7 @@
             box-shadow: 0 0 15px rgba(255, 255, 255, 0.3);
         }
         .graph-card canvas {
-            height: 220px !important; /* Fixed height for the canvas */
+            height: 220px !important;
             width: 100% !important;
         }
         .stats-card {
@@ -345,7 +345,6 @@
         .modal-content .close:hover {
             color: #ffffff;
             text-shadow: 0 0 15px rgba(255, 255, 255, 0.5);
-            /* transform: rotate(90deg); */
         }
         .modal-content .summary {
             margin-bottom: 20px;
@@ -401,10 +400,10 @@
                 grid-template-rows: auto auto auto auto auto;
             }
             .graph-card {
-                height: 250px; /* Smaller height on mobile */
+                height: 250px;
             }
             .graph-card canvas {
-                height: 180px !important; /* Smaller canvas height on mobile */
+                height: 180px !important;
             }
             .modal-content {
                 width: 90%;
@@ -665,7 +664,7 @@
                 const mcqWrong = mcqQuestions.filter(q => q.answer !== null && !q.is_correct).length;
                 const qaWrong = qaQuestions.filter(q => q.answer !== null && !q.is_correct).length;
                 const vaWrong = vaQuestions.filter(q => q.answer !== null && !q.is_correct).length;
-                const totalScore = (correctSums * 4) - wrongSums;
+                const totalScore = (correctSums * 4) - (mcqWrong + vaWrong); // Fixed scoring
                 const cutoffScore = module.totalQuestions * 2;
     
                 summary.innerHTML = `
