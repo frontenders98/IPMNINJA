@@ -1034,7 +1034,7 @@
             }).then(data => {
                 if (data.success) {
                     examCompleted = true;
-                    window.location.href = '/exam-complete'; // Assuming this is the route to exam-completed.ejs
+                    window.location.href = '/exam-completed'; // Assuming this is the route to exam-completed.ejs
                 } else {
                     console.error('Server response:', data);
                     alert('Failed to save exam answers: ' + data.message);
