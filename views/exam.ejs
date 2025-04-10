@@ -906,6 +906,7 @@ function nextQuestion() {
         const lastQA = sectionIndices.QA + questions.filter(q => q.type === 'QA').length - 1;
         if (currentQuestionIndex === lastQA && currentSection === 'QA') {
             completeSection();
+            return;
         } else if (currentQuestionIndex < questions.length - 1) {
             currentQuestionIndex++;
             displayExamModeQuestion();
@@ -918,18 +919,43 @@ function nextQuestion() {
             window.location.href = '/index';
         }
     } else {
-        fetch(`/exam/${<%- JSON.stringify(module.id) %>}/save-answer`, { // Ensure save before moving
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ questionId: questions[currentQuestionIndex].id, answer: answers[currentQuestionIndex], time_spent: Math.floor((Date.now() - questionStartTime) / 1000) })
-        }).then(() => {
-            if (currentQuestionIndex < questions.length - 1) {
-                currentQuestionIndex++;
-                displayNormalModeQuestion();
-            } else {
-                window.location.href = '/index';
-            }
-        });
+        const q = questions[currentQuestionIndex];
+        const userAnswer = answers[currentQuestionIndex] || document.getElementById('qa-input')?.value.trim() || null;
+        if (userAnswer && q.type === 'QA') {
+            fetch(`/exam/${<%- JSON.stringify(module.id) %>}/save-answer`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    questionId: q.id,
+                    answer: userAnswer,
+                    time_spent: Math.floor((Date.now() - questionStartTime) / 1000)
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    answers[currentQuestionIndex] = userAnswer;
+                    if (currentQuestionIndex < questions.length - 1) {
+                        currentQuestionIndex++;
+                        displayNormalModeQuestion();
+                    } else {
+                        window.location.href = '/index';
+                    }
+                } else {
+                    console.error('Failed to save:', data.message);
+                    alert('Failed to save your answer. Please try again.');
+                }
+            })
+            .catch(err => {
+                console.error('Save error:', err);
+                alert('Error saving answer. Check your connection.');
+            });
+        } else if (currentQuestionIndex < questions.length - 1) {
+            currentQuestionIndex++;
+            displayNormalModeQuestion();
+        } else {
+            window.location.href = '/index';
+        }
     }
 }
 
