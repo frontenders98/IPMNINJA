@@ -3,1203 +3,419 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Exam</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-polyfill/7.12.1/polyfill.min.js"></script>
-    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <title>Maths Exam - Admin</title>
     <style>
         body {
-            background: #000000;
+            background: linear-gradient(135deg, #0d0d0d 0%, #1a1a1a 100%);
             color: #ffffff;
             font-family: 'Segoe UI', sans-serif;
             margin: 0;
-            padding: 0;
             display: flex;
-            flex-direction: column;
+            justify-content: center;
             align-items: center;
             min-height: 100vh;
+            padding: 40px 20px;
         }
-        .navbar {
-            width: 100%;
-            max-width: 900px;
-            padding: 15px 20px;
+        .container {
+            width: 90%;
+            max-width: 700px;
             display: flex;
-            justify-content: space-between;
-            align-items: center;
-            z-index: 10;
-        }
-        .left-nav {
-            display: flex;
+            flex-direction: column;
+            gap: 20px;
             align-items: center;
         }
-        .right-nav {
+        .action-buttons {
             display: flex;
-            align-items: center;
-            gap: 10px;
+            gap: 15px;
+            margin-bottom: 20px;
         }
-        .timer {
-            font-size: 1.2em;
-            color: #ffcc00;
-            font-weight: bold;
-            flex-grow: 1;
-            text-align: center;
-        }
-        .nav-btn {
-            background: none;
+        .action-button, .overview-button, .logout-button {
+            background: #000000;
             color: #ffffff;
-            border: none;
-            padding: 10px 20px;
-            font-size: 1em;
+            padding: 8px 16px;
+            border: 2px solid #ffffff;
+            border-radius: 8px;
+            font-size: 0.9em;
             font-weight: 500;
             cursor: pointer;
             transition: all 0.3s ease;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-        .nav-btn:hover:not(.disabled) {
-            color: #ffcc00;
-            transform: translateY(-2px);
-        }
-        .nav-btn.disabled {
-            color: #666666;
-            cursor: not-allowed;
-        }
-        .back-btn::before {
-            content: '← ';
-            font-size: 1.2em;
-        }
-        .goto-container {
-            position: relative;
-        }
-        .goto-dropdown {
-            display: none;
-            position: absolute;
-            top: 100%;
-            left: 50%;
-            transform: translateX(-50%);
-            background: #151515;
-            border: 1px solid #ffffff33;
-            border-radius: 10px;
-            padding: 15px;
-            max-height: 500px;
-            overflow-y: auto;
             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
-            z-index: 20;
-            min-width: 200px;
-        }
-        .goto-section {
-            margin-bottom: 15px;
-        }
-        .goto-section h3 {
-            font-size: 1.2em;
-            margin-bottom: 10px;
-            color: #ffcc00;
-            text-transform: uppercase;
-        }
-        .goto-item {
-            padding: 10px;
-            cursor: pointer;
-            font-size: 1em;
-            transition: all 0.3s ease;
-        }
-        .goto-item:hover:not(.unattempted) {
-            background: #222222;
-            border-radius: 5px;
-        }
-        .goto-item.skipped::after {
-            content: ' ⚠';
-            color: #ffcc00;
-            font-size: 1.2em;
-        }
-        .goto-item.unattempted {
-            color: #666666;
-            cursor: not-allowed;
-        }
-        .content {
-            width: 100%;
-            max-width: 900px;
-            padding: 40px 20px;
-        }
-        .intro-screen {
             text-align: center;
-            padding: 40px;
-            background: #151515;
-            border: 1px solid #ffffff33;
-            border-radius: 10px;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
         }
-        .intro-screen h1 {
-            font-size: 2em;
-            margin-bottom: 20px;
-            color: #ffcc00;
-        }
-        .intro-screen p {
-            font-size: 1.2em;
-            margin-bottom: 15px;
-        }
-        .begin-btn {
-            background: #000000;
-            color: #ffffff;
-            padding: 15px 30px;
-            border: 2px solid #ffffff;
-            border-radius: 10px;
-            cursor: pointer;
-            font-size: 1.2em;
-            transition: all 0.3s ease;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            margin-top: 20px;
-        }
-        .begin-btn:hover {
+        .action-button:hover, .overview-button:hover, .logout-button:hover {
             background: #ffffff;
             color: #000000;
+            box-shadow: 0 6px 20px rgba(255, 255, 255, 0.2);
             transform: translateY(-2px);
         }
-        .question-text {
+        .logout-button {
+            background: #ff3333;
+            border-color: #ff6666;
+        }
+        .logout-button:hover {
+            background: #ff6666;
             color: #ffffff;
-            font-size: 1.3em;
-            text-align: left;
-            margin-bottom: 40px;
         }
-        .va-question-box {
-            color: #ffffff;
-            font-size: 1.3em;
-            text-align: left;
-            margin-bottom: 40px;
-            background: #151515;
-            padding: 20px;
-            border: 1px solid #ffffff33;
-            border-radius: 10px;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
-            transition: all 0.3s ease;
-        }
-        .va-question-box:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
-        }
-        .options {
-            display: flex;
-            flex-direction: column;
-            align-items: flex-start;
-            gap: 20px;
-            margin-bottom: 30px;
+        .exam-box {
+            background-color: #151515;
+            border: 3px solid #ffffff33;
+            padding: 30px;
             width: 100%;
-        }
-        .option-row {
             display: flex;
             justify-content: space-between;
-            width: 100%;
-            gap: 20px;
-        }
-        .option-btn {
-            display: flex;
             align-items: center;
-            background: #222222;
+            border-radius: 15px;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.5);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        .exam-box:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.6);
+        }
+        .exam-left {
+            flex: 1;
+            padding-right: 30px;
+            display: flex;
+            flex-direction: column;
+        }
+        .exam-title {
+            font-size: 3.5em;
+            margin: 0 0 25px 0;
             color: #ffffff;
-            border: 1px solid #ffffff33;
-            border-radius: 10px;
-            padding: 15px;
-            cursor: pointer;
-            font-size: 1em;
-            transition: all 0.3s ease;
-            width: 100%;
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
+            font-weight: 700;
+        }
+        .exam-times {
+            display: flex;
+            justify-content: space-between;
             max-width: 400px;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        }
+        .time-section {
+            text-align: center;
+            margin-right: 15px;
+            position: relative;
+        }
+        .time-section span {
+            display: block;
+            color: #ffffff;
+            font-size: 1.2em;
+            text-shadow: 0 0 5px rgba(255, 255, 255, 0.2);
+            margin-bottom: 8px;
+        }
+        .time-selector {
+            position: relative;
+            width: 60px;
+            height: 40px;
             overflow: hidden;
+            background: #222222;
+            border-radius: 20px;
+            border: 1px solid #ffffff33;
+            box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.3);
         }
-        .option-btn:hover:not(.disabled) {
-            background: #333333;
-            transform: translateY(-2px);
+        .time-scroll {
+            height: 100%;
+            position: relative;
+            overflow: auto;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
         }
-        .option-btn.disabled {
-            cursor: not-allowed;
-            opacity: 0.7;
+        .time-scroll::-webkit-scrollbar {
+            display: none;
         }
-        .option-btn.selected {
-            background: #666666;
-            border: 2px solid #ffffff;
-        }
-        .option-letter {
+        .time-option {
+            height: 40px;
             display: flex;
             align-items: center;
             justify-content: center;
-            width: 30px;
-            height: 30px;
-            background: #151515;
             color: #ffffff;
-            border: 2px solid #ffffff;
-            border-radius: 50%;
-            margin-right: 15px;
+            font-size: 1em;
+            transition: all 0.2s ease;
+        }
+        .time-option.selected {
             font-weight: bold;
-            flex-shrink: 0;
-        }
-        .option-text {
-            flex: 1;
-            color: #ffffff;
-            word-wrap: break-word;
-            overflow-wrap: break-word;
-            max-width: 100%;
-        }
-        .option-btn.correct {
-            background: #00cc00;
-            color: #ffffff;
-            animation: correctAnimation 0.5s ease;
-        }
-        .option-btn.correct .option-letter {
-            background: #000000;
             color: #ffffff;
         }
-        .option-btn.correct .option-text {
-            color: #ffffff;
+        .time-selector:before, .time-selector:after {
+            content: '';
+            position: absolute;
+            left: 0;
+            right: 0;
+            height: 15px;
+            pointer-events: none;
+            z-index: 2;
         }
-        .option-btn.wrong {
-            background: #ff3333;
-            animation: wrongAnimation 0.5s ease;
+        .time-selector:before {
+            top: 0;
+            background: linear-gradient(to bottom, rgba(34, 34, 34, 1) 0%, rgba(34, 34, 34, 0) 100%);
         }
-        .option-btn.wrong .option-letter {
-            background: #151515;
-            color: #ffffff;
+        .time-selector:after {
+            bottom: 0;
+            background: linear-gradient(to top, rgba(34, 34, 34, 1) 0%, rgba(34, 34, 34, 0) 100%);
         }
-        .qa-input-container {
+        .buttons-container {
             display: flex;
+            flex-direction: column;
             align-items: center;
-            gap: 20px;
-            width: 100%;
-            margin-bottom: 30px;
-            justify-content: flex-start;
+            gap: 15px;
         }
-        .qa-input {
-            background: #222222;
-            color: #ffffff;
-            border: 1px solid #ffffff33;
-            border-radius: 10px;
-            padding: 15px;
-            font-size: 1em;
-            width: 23.33%;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
-        }
-        .qa-input:disabled {
-            cursor: not-allowed;
-            opacity: 0.7;
-        }
-        .qa-submit-btn {
-            background: #000000;
-            color: #ffffff;
-            padding: 15px 25px;
-            border: 2px solid #ffffff;
-            border-radius: 10px;
-            cursor: pointer;
-            font-size: 1em;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-        .qa-submit-btn:hover:not(:disabled) {
-            background: #333333;
-            transform: translateY(-2px);
-        }
-        .qa-submit-btn:disabled {
-            cursor: not-allowed;
-            opacity: 0.7;
-        }
-        @keyframes addressAnimation {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.05); }
-            100% { transform: scale(1); }
-        }
-        @keyframes wrongAnimation {
-            0% { transform: translateX(0); }
-            25% { transform: translateX(-5px); }
-            75% { transform: translateX(5px); }
-            100% { transform: translateX(0); }
-        }
-        .feedback {
-            padding: 20px;
-            border-radius: 8px;
-            font-size: 1.5em;
-            margin-bottom: 40px;
-            width: 100%;
-            max-width: 900px;
-            display: none;
-            justify-content: space-between;
-            align-items: center;
-        }
-        .feedback.correct {
-            background: #33cc33;
-            color: #ffffff;
-        }
-        .feedback.wrong {
-            background: #ff3333;
-            color: #ffffff;
-        }
-        .feedback-btn {
-            background: #000000;
-            color: #ffffff;
-            padding: 10px 20px;
-            border: 2px solid #ffffff;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 1em;
-            transition: all 0.3s ease;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-        .feedback-btn:hover {
-            background: #ffffff;
-            color: #000000;
-            transform: translateY(-2px);
-        }
-        .nav-buttons {
-            display: flex;
-            justify-content: space-between;
-            width: 100%;
-            max-width: 900px;
-            margin-top: 20px;
-        }
-        .prev-btn, .next-btn {
+        .edit-button, .instruction-edit-button, .delete-button {
             background: #000000;
             color: #ffffff;
             padding: 12px 20px;
             border: 2px solid #ffffff;
             border-radius: 8px;
-            cursor: pointer;
             font-size: 1em;
+            font-weight: 500;
+            cursor: pointer;
             transition: all 0.3s ease;
             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
-            text-transform: uppercase;
-            letter-spacing: 1px;
+            width: 140px;
+            text-align: center;
+            letter-spacing: 0.5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            text-decoration: none;
         }
-        .prev-btn:hover:not(:disabled), .next-btn:hover:not(:disabled) {
+        .edit-button:hover, .instruction-edit-button:hover, .delete-button:hover {
             background: #ffffff;
             color: #000000;
+            box-shadow: 0 6px 20px rgba(255, 255, 255, 0.2);
             transform: translateY(-2px);
         }
-        .prev-btn:disabled, .next-btn:disabled {
-            cursor: not-allowed;
-            opacity: 0.7;
+        .delete-button {
+            background: #ff3333;
+            border-color: #ff6666;
         }
-        .prev-btn::before {
-            content: '← ';
-            font-size: 1.2em;
+        .delete-button:hover {
+            background: #ff6666;
+            color: #ffffff;
         }
-        .next-btn::after {
-            content: ' →';
-            font-size: 1.2em;
-        }
-        .answer-explanation {
+        .popup {
             display: none;
-            max-width: 900px;
+            position: fixed;
+            top: 0;
+            left: 0;
             width: 100%;
-            margin-bottom: 40px;
-            text-align: left;
-            padding: 15px;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .popup-content {
             background: #151515;
-            border: 1px solid #ffffff33;
+            padding: 20px;
             border-radius: 10px;
-            overflow-x: hidden;
+            width: 90%;
+            max-width: 500px;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.5);
         }
-        .correct-answer-label {
-            font-size: 1.3em;
-            font-weight: bold;
-            margin-bottom: 10px;
+        .popup-content textarea {
+            width: 100%;
+            padding: 10px;
+            background: #333333;
+            border: 1px solid #ffffff33;
+            border-radius: 8px;
+            color: #ffffff;
+            font-size: 1em;
+            resize: vertical;
+            min-height: 150px;
         }
-        .correct-answer {
-            font-size: 1.3em;
-            margin-bottom: 20px;
-            word-wrap: break-word;
-        }
-        .explanation-label {
-            font-size: 1.3em;
-            font-weight: bold;
-            margin-bottom: 10px;
-        }
-        .explanation-text {
-            font-size: 1.3em;
-            word-wrap: break-word;
-        }
-        @media (max-width: 700px) {
-            .navbar { padding: 10px; flex-wrap: wrap; gap: 10px; }
-            .nav-btn { padding: 8px 15px; font-size: 0.9em; }
-            .goto-dropdown { top: 100%; left: 50%; transform: translateX(-50%); width: 90%; max-width: 200px; }
-            .option-row { flex-direction: column; align-items: center; gap: 10px; }
-            .option-btn { width: 100%; max-width: 300px; padding: 10px; }
-            .qa-input-container { flex-direction: column; align-items: center; gap: 20px; }
-            .qa-input { width: 100%; max-width: 300px; }
-            .qa-submit-btn { width: 100%; max-width: 300px; }
-            .next-btn, .prev-btn { width: 100%; max-width: 300px; }
-            .question-text, .va-question-box { font-size: 1.1em; }
-            .correct-answer-label, .correct-answer, .explanation-label, .explanation-text { font-size: 1.1em; }
-            .feedback { flex-direction: column; align-items: flex-start; gap: 10px; padding: 15px; font-size: 1.2em; }
-            .nav-buttons { flex-direction: column; gap: 10px; }
-            .feedback-btn { width: 100%; max-width: 300px; }
+        .popup-content button {
+            margin-top: 10px;
+            width: 100%;
+            padding: 10px;
         }
     </style>
 </head>
 <body>
-    <div class="navbar">
-        <div class="left-nav">
-            <button class="nav-btn back-btn" id="back-btn" onclick="goHome()">Back</button>
+    <div class="container">
+        <div class="action-buttons">
+            <button class="action-button" onclick="showCreateModule()">Create Module</button>
+            <a href="/admin/overview" class="overview-button">Overview</a>
+            <button class="logout-button" onclick="logout()">Logout</button>
         </div>
-        <div class="timer" id="timer" style="display: none;"></div>
-        <div class="right-nav">
-            <% if (!isExamMode && !isReviewMode) { %>
-                <button class="nav-btn" onclick="skipQuestion()">Skip</button>
-            <% } %>
-            <div class="goto-container">
-                <button class="nav-btn" onclick="toggleGoTo()">Go To</button>
-                <div class="goto-dropdown" id="goto-dropdown"></div>
+        <% modules.forEach(module => { %>
+            <div class="exam-box" id="module-<%= module.id %>">
+                <div class="exam-left">
+                    <h1 class="exam-title"><%= module.name %></h1>
+                    <% if (module.time_limit) { %>
+                        <div class="exam-times">
+                            <div class="time-section">
+                                <span>Time Limit</span>
+                                <div class="time-selector">
+                                    <div class="time-scroll" id="time-scroll-<%= module.id %>">
+                                        <% for(let i = 1; i <= 60; i++) { %>
+                                            <div class="time-option" data-value="<%= i %>"
+                                                 <%= module.time_limit / 60 === i ? 'class="selected"' : '' %>>
+                                                <%= i %> min
+                                            </div>
+                                        <% } %>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    <% } %>
+                </div>
+                <div class="buttons-container">
+                    <a href="/admin/questions/<%= module.id %>" class="edit-button">
+                        <span>✎</span> Add Questions
+                    </a>
+                    <button class="instruction-edit-button" onclick="showInstructionPopup('<%= module.id %>')">
+                        <span>✎</span> Instructions
+                    </button>
+                    <button class="delete-button" onclick="deleteModule('<%= module.id %>')">Delete</button>
+                </div>
             </div>
+        <% }) %>
+    </div>
+
+    <div class="popup" id="create-module-popup">
+        <div class="popup-content">
+            <h2>Create New Module</h2>
+            <form action="/admin/add-module" method="POST">
+                <input type="text" name="name" placeholder="Module Name" required style="margin-bottom: 10px; padding: 10px;">
+                <input type="number" name="time_limit" placeholder="Time Limit (minutes)" min="1" max="60" style="margin-bottom: 10px; padding: 10px;">
+                <textarea name="instructions" placeholder="Instructions"></textarea>
+                <button type="submit">Create</button>
+                <button type="button" onclick="hidePopup('create-module-popup')">Cancel</button>
+            </form>
         </div>
     </div>
-    <div class="content" id="content">
-        <div class="intro-screen" id="intro-screen" style="display: none;"></div>
-        <div class="question-text" id="question-text" style="display: none;"></div>
-        <div class="va-question-box" id="va-question-box" style="display: none;"></div>
-        <div class="options" id="options"></div>
-        <div class="qa-input-container" id="qa-input-container" style="display: none;">
-            <input type="text" class="qa-input" id="qa-input" placeholder="Enter your answer here">
-            <button class="qa-submit-btn" id="qa-submit-btn" onclick="submitQAAnswer()">Submit</button>
+
+    <div class="popup" id="instruction-popup">
+        <div class="popup-content">
+            <h2>Edit Instructions</h2>
+            <textarea id="instruction-text"></textarea>
+            <input type="number" id="time-limit-input" placeholder="Time Limit (minutes)" min="1" max="60" style="margin-top: 10px; padding: 10px; width: 100%;">
+            <button onclick="saveInstructions()">Save</button>
+            <button onclick="hidePopup('instruction-popup')">Cancel</button>
         </div>
-        <div class="feedback" id="feedback">
-            <span id="feedback-text"></span>
-            <% if (!isExamMode && !isReviewMode) { %>
-                <button class="feedback-btn" id="feedback-next-btn" onclick="nextQuestion()">Next</button>
-            <% } %>
-        </div>
-        <div class="answer-explanation" id="answer-explanation">
-            <div class="correct-answer-label">Correct Answer</div>
-            <div class="correct-answer" id="correct-answer"></div>
-            <div class="explanation-label">Explanation</div>
-            <div class="explanation-text" id="explanation-text"></div>
-        </div>
-        <% if (isReviewMode) { %>
-            <div class="nav-buttons">
-                <button class="prev-btn" id="prev-btn" onclick="prevQuestion()">Previous</button>
-                <button class="next-btn" id="next-btn" onclick="nextQuestion()">Next</button>
-            </div>
-        <% } else { %>
-            <button class="next-btn" id="next-btn" onclick="nextQuestion()" style="display: none;">Next</button>
-        <% } %>
     </div>
-<script>
-let questions = <%- JSON.stringify(questions) %>;
-let currentQuestionIndex = <%- JSON.stringify(startIndex) %>;
-let answers = <%- JSON.stringify(answers) %>;
-const isExamMode = <%- JSON.stringify(isExamMode) %>;
-const isReviewMode = <%- JSON.stringify(isReviewMode) %>;
-const timeLimit = <%- JSON.stringify(timeLimit) %>;
-let skipped = new Array(questions.length).fill(false);
-let timerInterval = null;
-let timeRemaining = timeLimit;
-let currentSection = <%- JSON.stringify(currentSection) %>;
-let sectionIndices = isExamMode && !isReviewMode ? { QA: -1, MCQ: -1, VA: -1 } : null;
-let examCompleted = false;
-let questionStartTime = null;
-let resumeIndex = currentQuestionIndex;
-let sectionStartTime = null;
 
-if (!isExamMode && !isReviewMode) {
-    questions.sort((a, b) => {
-        const order = { 'QA': 0, 'MCQ': 1, 'VA': 2 };
-        return order[a.type] - order[b.type] || a.id - b.id;
-    });
-    resumeIndex = answers.findIndex(a => a === null || a === undefined);
-    if (resumeIndex === -1) resumeIndex = 0; // Start at 0 if all answered
-    currentQuestionIndex = resumeIndex;
-    console.log('Normal mode resume index:', resumeIndex, 'Answers:', answers);
-} else if (isExamMode && !isReviewMode) {
-    questions.sort((a, b) => {
-        if (a.type === 'QA' && b.type !== 'QA') return -1;
-        if (b.type === 'QA' && a.type !== 'QA') return 1;
-        if (a.type === 'MCQ' && b.type === 'VA') return -1;
-        if (b.type === 'MCQ' && a.type !== 'VA') return 1;
-        if (a.type === 'VA' && b.type === 'VA') {
-            if (a.tags === b.tags) return a.id - b.id;
-            return (a.tags || '').localeCompare(b.tags || '');
-        }
-        return a.id - b.id;
-    });
-    sectionIndices.QA = questions.findIndex(q => q.type === 'QA');
-    sectionIndices.MCQ = questions.findIndex(q => q.type === 'MCQ');
-    sectionIndices.VA = questions.findIndex(q => q.type === 'VA');
-} else if (isReviewMode) {
-    questions.sort((a, b) => {
-        const order = { 'QA': 0, 'MCQ': 1, 'VA': 2 };
-        return order[a.type] - order[b.type] || a.id - b.id;
-    });
-}
+    <script>
+        const currentTimes = {};
+        const modulesData = <%- JSON.stringify(modules) %>;
+        let currentModuleId = null;
 
-function disableBackNavigation() {
-    if (!isExamMode || isReviewMode) return;
-    history.pushState(null, null, window.location.href);
-    window.onpopstate = () => history.go(1);
-    document.getElementById('back-btn').classList.add('disabled');
-}
-
-function enableBackNavigation() {
-    window.onpopstate = null;
-    document.getElementById('back-btn').classList.remove('disabled');
-}
-
-function displayQuestion() {
-    questionStartTime = Date.now();
-    if (isExamMode && !isReviewMode) displayExamModeQuestion();
-    else if (isReviewMode) displayReviewModeQuestion();
-    else displayNormalModeQuestion();
-    updateNavigationButtons();
-}
-
-function displayNormalModeQuestion() {
-    if (currentQuestionIndex >= questions.length) {
-        document.getElementById('question-text').innerHTML = 'Practice Complete!';
-        document.getElementById('question-text').style.display = 'block';
-        document.getElementById('va-question-box').style.display = 'none';
-        document.getElementById('options').innerHTML = '';
-        document.getElementById('qa-input-container').style.display = 'none';
-        document.getElementById('feedback').style.display = 'none';
-        document.getElementById('answer-explanation').style.display = 'none';
-        document.getElementById('goto-dropdown').style.display = 'none';
-        document.getElementById('next-btn').style.display = 'none';
-        return;
-    }
-
-    const q = questions[currentQuestionIndex];
-    const questionText = document.getElementById('question-text');
-    const vaQuestionBox = document.getElementById('va-question-box');
-    const optionsDiv = document.getElementById('options');
-    const qaInputContainer = document.getElementById('qa-input-container');
-    const nextBtn = document.getElementById('next-btn');
-    optionsDiv.innerHTML = '';
-
-    if (q.type === 'VA' || q.type === 'MCQ') {
-        questionText.style.display = q.type === 'MCQ' ? 'block' : 'none';
-        vaQuestionBox.style.display = q.type === 'VA' ? 'block' : 'none';
-        questionText.innerHTML = q.question;
-        vaQuestionBox.innerHTML = q.question;
-        optionsDiv.style.display = 'flex';
-        qaInputContainer.style.display = 'none';
-        nextBtn.style.display = 'none';
-
-        const options = [
-            { letter: 'A', value: q.option_a },
-            { letter: 'B', value: q.option_b },
-            { letter: 'C', value: q.option_c },
-            { letter: 'D', value: q.option_d }
-        ];
-        if (q.option_e) options.push({ letter: 'E', value: q.option_e });
-
-        const row1 = document.createElement('div');
-        row1.className = 'option-row';
-        const row2 = document.createElement('div');
-        row2.className = 'option-row';
-        const row3 = document.createElement('div');
-        row3.className = 'option-row';
-
-        options.forEach((opt, index) => {
-            const btn = document.createElement('button');
-            btn.className = 'option-btn';
-            btn.innerHTML = `<span class="option-letter">${opt.letter}</span><span class="option-text">${opt.value}</span>`;
-            if (answers[currentQuestionIndex]) {
-                btn.disabled = true;
-                btn.classList.add('disabled');
-                if (opt.letter === q.correct_answer) btn.classList.add('correct');
-                if (opt.letter === answers[currentQuestionIndex] && opt.letter !== q.correct_answer) btn.classList.add('wrong');
-            } else if (currentQuestionIndex >= resumeIndex) {
-                btn.onclick = () => checkAnswer(opt.letter, q.correct_answer, q.explanation, opt.value);
-            } else {
-                btn.disabled = true;
-                btn.classList.add('disabled');
-                if (opt.letter === q.correct_answer) btn.classList.add('correct');
-                if (opt.letter === answers[currentQuestionIndex] && opt.letter !== q.correct_answer) btn.classList.add('wrong');
+        modulesData.forEach(module => {
+            if (module.time_limit) {
+                currentTimes[module.id] = module.time_limit / 60;
+                const scrollContainer = document.getElementById(`time-scroll-${module.id}`);
+                if (scrollContainer) {
+                    setTimeout(() => scrollToSelected(module.id), 100);
+                    scrollContainer.addEventListener('scroll', () => handleScroll(module.id));
+                }
             }
-            if (index < 2) row1.appendChild(btn);
-            else if (index < 4) row2.appendChild(btn);
-            else row3.appendChild(btn);
         });
 
-        optionsDiv.appendChild(row1);
-        if (row2.children.length) optionsDiv.appendChild(row2);
-        if (row3.children.length) optionsDiv.appendChild(row3);
-    } else if (q.type === 'QA') {
-        questionText.style.display = 'block';
-        vaQuestionBox.style.display = 'none';
-        questionText.innerHTML = q.question;
-        optionsDiv.style.display = 'none';
-        qaInputContainer.style.display = 'flex';
-        nextBtn.style.display = 'none';
-        document.getElementById('qa-input').value = answers[currentQuestionIndex] || '';
-        document.getElementById('qa-input').disabled = !!answers[currentQuestionIndex] || currentQuestionIndex < resumeIndex;
-        document.getElementById('qa-submit-btn').disabled = !!answers[currentQuestionIndex] || currentQuestionIndex < resumeIndex;
-    }
-
-    document.getElementById('feedback').style.display = answers[currentQuestionIndex] ? 'flex' : 'none';
-    document.getElementById('answer-explanation').style.display = answers[currentQuestionIndex] ? 'block' : 'none';
-    if (answers[currentQuestionIndex]) updateFeedbackAndExplanation();
-
-    MathJax.typesetPromise().catch(err => console.error('MathJax error:', err));
-}
-
-function displayExamModeQuestion() {
-    if (currentQuestionIndex >= questions.length) {
-        examCompleted = true;
-        completeExam();
-        return;
-    }
-
-    const q = questions[currentQuestionIndex];
-    const questionText = document.getElementById('question-text');
-    const vaQuestionBox = document.getElementById('va-question-box');
-    const optionsDiv = document.getElementById('options');
-    const qaInputContainer = document.getElementById('qa-input-container');
-    const nextBtn = document.getElementById('next-btn');
-    optionsDiv.innerHTML = '';
-
-    if (q.type === 'VA' || q.type === 'MCQ') {
-        questionText.style.display = q.type === 'MCQ' ? 'block' : 'none';
-        vaQuestionBox.style.display = q.type === 'VA' ? 'block' : 'none';
-        questionText.innerHTML = q.question;
-        vaQuestionBox.innerHTML = q.question;
-        optionsDiv.style.display = 'flex';
-        qaInputContainer.style.display = 'none';
-        nextBtn.style.display = 'block';
-        nextBtn.disabled = false;
-
-        const options = [
-            { letter: 'A', value: q.option_a },
-            { letter: 'B', value: q.option_b },
-            { letter: 'C', value: q.option_c },
-            { letter: 'D', value: q.option_d }
-        ];
-        if (q.option_e) options.push({ letter: 'E', value: q.option_e });
-
-        const row1 = document.createElement('div');
-        row1.className = 'option-row';
-        const row2 = document.createElement('div');
-        row2.className = 'option-row';
-        const row3 = document.createElement('div');
-        row3.className = 'option-row';
-
-        options.forEach((opt, index) => {
-            const btn = document.createElement('button');
-            btn.className = 'option-btn';
-            btn.innerHTML = `<span class="option-letter">${opt.letter}</span><span class="option-text">${opt.value}</span>`;
-            if (answers[currentQuestionIndex] === opt.letter) btn.classList.add('selected');
-            btn.onclick = () => selectAnswer(opt.letter);
-            if (index < 2) row1.appendChild(btn);
-            else if (index < 4) row2.appendChild(btn);
-            else row3.appendChild(btn);
-        });
-
-        optionsDiv.appendChild(row1);
-        if (row2.children.length) optionsDiv.appendChild(row2);
-        if (row3.children.length) optionsDiv.appendChild(row3);
-    } else if (q.type === 'QA') {
-        questionText.style.display = 'block';
-        vaQuestionBox.style.display = 'none';
-        questionText.innerHTML = q.question;
-        optionsDiv.style.display = 'none';
-        qaInputContainer.style.display = 'flex';
-        nextBtn.style.display = 'block';
-        nextBtn.disabled = false;
-        document.getElementById('qa-input').value = answers[currentQuestionIndex] || '';
-        document.getElementById('qa-input').oninput = (e) => answers[currentQuestionIndex] = e.target.value.trim();
-        document.getElementById('qa-input').disabled = false;
-        document.getElementById('qa-submit-btn').style.display = 'none';
-    }
-
-    document.getElementById('feedback').style.display = 'none';
-    document.getElementById('answer-explanation').style.display = 'none';
-
-    MathJax.typesetPromise().catch(err => console.error('MathJax error:', err));
-}
-
-function displayReviewModeQuestion() {
-    if (currentQuestionIndex >= questions.length) {
-        window.location.href = '/index';
-        return;
-    }
-
-    const q = questions[currentQuestionIndex];
-    const questionText = document.getElementById('question-text');
-    const vaQuestionBox = document.getElementById('va-question-box');
-    const optionsDiv = document.getElementById('options');
-    const qaInputContainer = document.getElementById('qa-input-container');
-    optionsDiv.innerHTML = '';
-
-    if (q.type === 'VA' || q.type === 'MCQ') {
-        questionText.style.display = q.type === 'MCQ' ? 'block' : 'none';
-        vaQuestionBox.style.display = q.type === 'VA' ? 'block' : 'none';
-        questionText.innerHTML = q.question;
-        vaQuestionBox.innerHTML = q.question;
-        optionsDiv.style.display = 'flex';
-        qaInputContainer.style.display = 'none';
-
-        const options = [
-            { letter: 'A', value: q.option_a },
-            { letter: 'B', value: q.option_b },
-            { letter: 'C', value: q.option_c },
-            { letter: 'D', value: q.option_d }
-        ];
-        if (q.option_e) options.push({ letter: 'E', value: q.option_e });
-
-        const row1 = document.createElement('div');
-        row1.className = 'option-row';
-        const row2 = document.createElement('div');
-        row2.className = 'option-row';
-        const row3 = document.createElement('div');
-        row3.className = 'option-row';
-
-        options.forEach((opt, index) => {
-            const btn = document.createElement('button');
-            btn.className = 'option-btn disabled';
-            btn.innerHTML = `<span class="option-letter">${opt.letter}</span><span class="option-text">${opt.value}</span>`;
-            const isUserAnswer = answers[currentQuestionIndex] === opt.letter;
-            const isCorrectAnswer = opt.letter === q.correct_answer;
-            if (isCorrectAnswer) btn.classList.add('correct');
-            else if (isUserAnswer && !isCorrectAnswer) btn.classList.add('wrong');
-            if (index < 2) row1.appendChild(btn);
-            else if (index < 4) row2.appendChild(btn);
-            else row3.appendChild(btn);
-        });
-
-        optionsDiv.appendChild(row1);
-        if (row2.children.length) optionsDiv.appendChild(row2);
-        if (row3.children.length) optionsDiv.appendChild(row3);
-    } else if (q.type === 'QA') {
-        questionText.style.display = 'block';
-        vaQuestionBox.style.display = 'none';
-        questionText.innerHTML = q.question;
-        optionsDiv.style.display = 'none';
-        qaInputContainer.style.display = 'flex';
-        document.getElementById('qa-input').value = answers[currentQuestionIndex] || '';
-        document.getElementById('qa-input').disabled = true;
-        document.getElementById('qa-submit-btn').style.display = 'none';
-    }
-
-    document.getElementById('feedback').style.display = 'flex';
-    document.getElementById('answer-explanation').style.display = 'block';
-    updateFeedbackAndExplanation();
-
-    MathJax.typesetPromise().catch(err => console.error('MathJax error:', err));
-}
-
-function checkAnswer(selected, correct, explanation, selectedValue) {
-    const q = questions[currentQuestionIndex];
-    const buttons = document.querySelectorAll('.option-btn');
-    buttons.forEach(btn => {
-        btn.disabled = true;
-        btn.classList.add('disabled');
-        if (btn.querySelector('.option-letter').textContent === correct) btn.classList.add('correct');
-    });
-
-    answers[currentQuestionIndex] = selected;
-    skipped[currentQuestionIndex] = false;
-    const feedback = document.getElementById('feedback');
-    const feedbackText = document.getElementById('feedback-text');
-
-    if (selected === correct) {
-        buttons.forEach(btn => {
-            if (btn.querySelector('.option-letter').textContent === selected) btn.classList.add('correct');
-        });
-        feedbackText.innerHTML = 'Correct!';
-        feedback.classList.remove('wrong');
-        feedback.classList.add('correct');
-    } else {
-        buttons.forEach(btn => {
-            if (btn.querySelector('.option-letter').textContent === selected) btn.classList.add('wrong');
-        });
-        feedbackText.innerHTML = 'Wrong!';
-        feedback.classList.remove('correct');
-        feedback.classList.add('wrong');
-    }
-
-    feedback.style.display = 'flex';
-    updateFeedbackAndExplanation();
-
-    const timeSpent = Math.floor((Date.now() - questionStartTime) / 1000);
-    fetch(`/exam/${<%- JSON.stringify(module.id) %>}/save-answer`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ questionId: q.id, answer: selected, time_spent: timeSpent })
-    }).then(response => response.json()).then(data => {
-        if (!data.success) console.error('Failed to save answer:', data.message);
-    }).catch(err => console.error('Save error:', err));
-
-    updateGoToDropdown();
-}
-
-function selectAnswer(selected) {
-    answers[currentQuestionIndex] = selected;
-    const buttons = document.querySelectorAll('.option-btn');
-    buttons.forEach(btn => {
-        btn.classList.remove('selected');
-        if (btn.querySelector('.option-letter').textContent === selected) btn.classList.add('selected');
-    });
-    updateGoToDropdown();
-}
-
-function submitQAAnswer() {
-    const q = questions[currentQuestionIndex];
-    const userAnswer = document.getElementById('qa-input').value.trim();
-    const correctAnswer = q.correct_answer.trim();
-
-    answers[currentQuestionIndex] = userAnswer;
-    skipped[currentQuestionIndex] = false;
-    const feedback = document.getElementById('feedback');
-    const feedbackText = document.getElementById('feedback-text');
-
-    document.getElementById('qa-input').disabled = true;
-    document.getElementById('qa-submit-btn').disabled = true;
-
-    if (userAnswer === correctAnswer) {
-        feedbackText.innerHTML = 'Correct!';
-        feedback.classList.remove('wrong');
-        feedback.classList.add('correct');
-    } else {
-        feedbackText.innerHTML = 'Wrong!';
-        feedback.classList.remove('correct');
-        feedback.classList.add('wrong');
-    }
-
-    feedback.style.display = 'flex';
-    updateFeedbackAndExplanation();
-
-    const timeSpent = Math.floor((Date.now() - questionStartTime) / 1000);
-    fetch(`/exam/${<%- JSON.stringify(module.id) %>}/save-answer`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ questionId: q.id, answer: userAnswer, time_spent: timeSpent })
-    }).then(response => response.json()).then(data => {
-        if (!data.success) console.error('Failed to save answer:', data.message);
-    }).catch(err => console.error('Save error:', err));
-
-    updateGoToDropdown();
-}
-
-function updateFeedbackAndExplanation() {
-    const q = questions[currentQuestionIndex];
-    const feedbackText = document.getElementById('feedback-text');
-    const correctAnswerDiv = document.getElementById('correct-answer');
-    const explanationDiv = document.getElementById('explanation-text');
-
-    if (answers[currentQuestionIndex]) {
-        feedbackText.innerHTML = answers[currentQuestionIndex] === q.correct_answer ? 'Correct!' : 'Wrong!';
-        feedback.classList.remove(answers[currentQuestionIndex] === q.correct_answer ? 'wrong' : 'correct');
-        feedback.classList.add(answers[currentQuestionIndex] === q.correct_answer ? 'correct' : 'wrong');
-    } else {
-        feedbackText.innerHTML = 'Not Answered';
-        feedback.classList.remove('correct', 'wrong');
-    }
-
-    if (q.type === 'QA') {
-        correctAnswerDiv.innerHTML = q.correct_answer;
-    } else {
-        correctAnswerDiv.innerHTML = `${q.correct_answer}: ${q[`option_${q.correct_answer.toLowerCase()}`]}`;
-    }
-    explanationDiv.innerHTML = q.explanation || 'No explanation provided.';
-    document.getElementById('answer-explanation').style.display = 'block';
-
-    MathJax.typesetPromise().catch(err => console.error('MathJax error:', err));
-}
-
-function nextQuestion() {
-    if (isExamMode && !isReviewMode) {
-        const lastQA = sectionIndices.QA + questions.filter(q => q.type === 'QA').length - 1;
-        const lastMCQ = sectionIndices.MCQ + questions.filter(q => q.type === 'MCQ').length - 1;
-        const isLastInSection = (currentSection === 'QA' && currentQuestionIndex === lastQA) ||
-                               (currentSection === 'MCQ' && currentQuestionIndex === lastMCQ) ||
-                               (currentSection === 'VA' && currentQuestionIndex === questions.length - 1);
-
-        if (isLastInSection && timeRemaining > 0) {
-            displayExamModeQuestion();
-        } else if (currentQuestionIndex < questions.length - 1) {
-            currentQuestionIndex++;
-            displayExamModeQuestion();
+        function scrollToSelected(moduleId) {
+            const scrollContainer = document.getElementById(`time-scroll-${moduleId}`);
+            if (scrollContainer) {
+                const selectedOption = scrollContainer.querySelector(`.time-option[data-value="${currentTimes[moduleId]}"]`);
+                if (selectedOption) {
+                    scrollContainer.scrollTop = selectedOption.offsetTop - 
+                        (scrollContainer.clientHeight / 2) + (selectedOption.clientHeight / 2);
+                }
+            }
         }
-    } else if (isReviewMode) {
-        if (currentQuestionIndex < questions.length - 1) {
-            currentQuestionIndex++;
-            displayReviewModeQuestion();
-        } else {
-            window.location.href = '/index';
-        }
-    } else {
-        currentQuestionIndex++;
-        displayNormalModeQuestion();
-    }
-}
 
-function prevQuestion() {
-    if (isReviewMode && currentQuestionIndex > 0) {
-        currentQuestionIndex--;
-        displayReviewModeQuestion();
-    }
-}
-
-function updateNavigationButtons() {
-    if (!isReviewMode) return;
-    document.getElementById('prev-btn').disabled = currentQuestionIndex === 0;
-    document.getElementById('next-btn').disabled = currentQuestionIndex === questions.length - 1;
-    if (currentQuestionIndex === questions.length - 1) {
-        document.getElementById('next-btn').innerHTML = 'Finish';
-    } else {
-        document.getElementById('next-btn').innerHTML = 'Next →';
-    }
-}
-
-function skipQuestion() {
-    if (!isExamMode && !isReviewMode && currentQuestionIndex < questions.length - 1) {
-        if (!answers[currentQuestionIndex] && currentQuestionIndex >= resumeIndex) {
-            skipped[currentQuestionIndex] = true;
-        }
-        currentQuestionIndex++;
-        displayQuestion();
-        updateGoToDropdown();
-    }
-}
-
-function completeSection() {
-    if (!isExamMode || isReviewMode) return;
-    clearInterval(timerInterval);
-    const lastQA = sectionIndices.QA + questions.filter(q => q.type === 'QA').length - 1;
-    const lastMCQ = sectionIndices.MCQ + questions.filter(q => q.type === 'MCQ').length - 1;
-
-    if (currentSection === 'QA') {
-        currentSection = 'MCQ';
-        currentQuestionIndex = sectionIndices.MCQ;
-        timeRemaining = <%- JSON.stringify(module.time_limit || 2400) %>;
-        showNextSectionPrompt();
-    } else if (currentSection === 'MCQ') {
-        currentSection = 'VA';
-        currentQuestionIndex = sectionIndices.VA;
-        timeRemaining = <%- JSON.stringify(module.time_limit || 2400) %>;
-        showNextSectionPrompt();
-    } else if (currentSection === 'VA') {
-        completeExam();
-    }
-}
-
-function completeExam() {
-    if (!isExamMode || isReviewMode) return;
-    const sectionCounts = {
-        QA: questions.filter(q => q.type === 'QA').length,
-        MCQ: questions.filter(q => q.type === 'MCQ').length,
-        VA: questions.filter(q => q.type === 'VA').length
-    };
-    const totalTime = <%- JSON.stringify(module.time_limit || 2400) %>;
-    const timePerSection = totalTime;
-    const timeSpent = Math.floor((Date.now() - sectionStartTime) / 1000);
-
-    const answersWithTime = answers.map((answer, i) => {
-        const q = questions[i];
-        let sectionTimeSpent;
-        if (q.type === 'QA') sectionTimeSpent = i === sectionIndices.QA ? timePerSection - timeRemaining : timePerSection / sectionCounts.QA;
-        else if (q.type === 'MCQ') sectionTimeSpent = i === sectionIndices.MCQ ? timePerSection - timeRemaining : timePerSection / sectionCounts.MCQ;
-        else sectionTimeSpent = i === sectionIndices.VA ? timeSpent : timePerSection / sectionCounts.VA;
-        return { questionId: q.id, answer, time_spent: Math.round(sectionTimeSpent) };
-    });
-    console.log('Sending answers to server:', answersWithTime);
-
-    fetch(`/exam/${<%- JSON.stringify(module.id) %>}/complete`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ answers: answersWithTime })
-    }).then(response => {
-        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-        return response.json();
-    }).then(data => {
-        if (data.success) {
-            examCompleted = true;
-            window.location.href = data.redirect; // Use the redirect from the server
-        } else {
-            console.error('Server response:', data);
-            alert('Failed to save exam answers: ' + data.message);
-        }
-    }).catch(err => {
-        console.error('Exam completion error:', err);
-        alert('Error saving exam: ' + err.message);
-    });
-}
-
-function goHome() {
-    if (isExamMode && !examCompleted && !isReviewMode) return;
-    window.location.href = '/index';
-}
-
-function toggleGoTo() {
-    const dropdown = document.getElementById('goto-dropdown');
-    if (dropdown.style.display === 'block') dropdown.style.display = 'none';
-    else {
-        updateGoToDropdown();
-        dropdown.style.display = 'block';
-    }
-}
-
-function updateGoToDropdown() {
-    const dropdown = document.getElementById('goto-dropdown');
-    dropdown.innerHTML = '';
-
-    if (isExamMode && !isReviewMode) {
-        const filteredQuestions = questions.filter(q => q.type === currentSection);
-        if (filteredQuestions.length > 0) {
-            const section = document.createElement('div');
-            section.className = 'goto-section';
-            section.innerHTML = `<h3>${currentSection}</h3>`;
-            filteredQuestions.forEach((q, index) => {
-                const globalIndex = questions.indexOf(q);
-                const item = document.createElement('div');
-                item.className = 'goto-item';
-                if (skipped[globalIndex]) item.className += ' skipped';
-                item.innerHTML = `Question ${index + 1}${answers[globalIndex] ? ' ✓' : ''}`;
-                item.onclick = () => {
-                    currentQuestionIndex = globalIndex;
-                    displayExamModeQuestion();
-                    dropdown.style.display = 'none';
-                };
-                section.appendChild(item);
+        function handleScroll(moduleId) {
+            const scrollContainer = document.getElementById(`time-scroll-${moduleId}`);
+            if (!scrollContainer) return;
+            const options = scrollContainer.querySelectorAll('.time-option');
+            const containerHeight = scrollContainer.clientHeight;
+            const containerCenter = scrollContainer.scrollTop + (containerHeight / 2);
+            let closestOption = null;
+            let closestDistance = Infinity;
+            options.forEach(option => {
+                const optionCenter = option.offsetTop + (option.clientHeight / 2);
+                const distance = Math.abs(containerCenter - optionCenter);
+                if (distance < closestDistance) {
+                    closestDistance = distance;
+                    closestOption = option;
+                }
             });
-            dropdown.appendChild(section);
-        }
-    } else {
-        const types = ['QA', 'MCQ', 'VA'];
-        types.forEach(type => {
-            const filteredQuestions = questions.filter(q => q.type === type);
-            if (filteredQuestions.length > 0) {
-                const section = document.createElement('div');
-                section.className = 'goto-section';
-                section.innerHTML = `<h3>${type}</h3>`;
-                filteredQuestions.forEach((q, index) => {
-                    const globalIndex = questions.indexOf(q);
-                    const item = document.createElement('div');
-                    item.className = 'goto-item';
-                    if (!isReviewMode && globalIndex > resumeIndex && !answers[globalIndex]) item.className += ' unattempted';
-                    if (skipped[globalIndex]) item.className += ' skipped';
-                    item.innerHTML = `Question ${index + 1}${answers[globalIndex] ? ' ✓' : ''}`;
-                    if (isReviewMode || globalIndex <= resumeIndex || answers[globalIndex] || skipped[globalIndex]) {
-                        item.onclick = () => {
-                            currentQuestionIndex = globalIndex;
-                            if (isReviewMode) displayReviewModeQuestion();
-                            else displayNormalModeQuestion();
-                            dropdown.style.display = 'none';
-                        };
-                    }
-                    section.appendChild(item);
-                });
-                dropdown.appendChild(section);
+            if (closestOption) {
+                options.forEach(opt => opt.classList.remove('selected'));
+                closestOption.classList.add('selected');
+                currentTimes[moduleId] = parseInt(closestOption.dataset.value);
+                clearTimeout(scrollContainer.scrollTimeout);
+                scrollContainer.scrollTimeout = setTimeout(() => {
+                    scrollContainer.scrollTop = closestOption.offsetTop - 
+                        (containerHeight / 2) + (closestOption.clientHeight / 2);
+                }, 150);
             }
-        });
-    }
-}
-
-function startTimer() {
-    if (!isExamMode || isReviewMode) return;
-    document.getElementById('timer').style.display = 'block';
-    timerInterval = setInterval(() => {
-        timeRemaining--;
-        const minutes = Math.floor(timeRemaining / 60);
-        const seconds = timeRemaining % 60;
-        document.getElementById('timer').innerHTML = `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
-        if (timeRemaining <= 0) {
-            clearInterval(timerInterval);
-            completeSection();
         }
-    }, 1000);
-}
 
-function showIntroScreen() {
-    if (!isExamMode || isReviewMode) return;
-    const introScreen = document.getElementById('intro-screen');
-    const qaCount = questions.filter(q => q.type === 'QA').length;
-    const mcqCount = questions.filter(q => q.type === 'MCQ').length;
-    const vaCount = questions.filter(q => q.type === 'VA').length;
-    introScreen.innerHTML = `
-        <h1>Exam Mode</h1>
-        <p>You are about to start an exam with ${qaCount + mcqCount + vaCount} questions across 3 sections:</p>
-        <p>- QA: ${qaCount} questions</p>
-        <p>- MCQ: ${mcqCount} questions</p>
-        <p>- VA: ${vaCount} questions</p>
-        <p>Each section has a ${timeLimit / 60}-minute time limit. You must wait until the timer ends to proceed to the next section.</p>
-        <button class="begin-btn" onclick="startSection('QA')">Begin</button>
-    `;
-    introScreen.style.display = 'block';
-    document.getElementById('question-text').style.display = 'none';
-    document.getElementById('va-question-box').style.display = 'none';
-    document.getElementById('options').style.display = 'none';
-    document.getElementById('qa-input-container').style.display = 'none';
-    document.getElementById('feedback').style.display = 'none';
-    document.getElementById('answer-explanation').style.display = 'none';
-    document.getElementById('next-btn').style.display = 'none';
-    document.getElementById('timer').style.display = 'none';
-}
+        function showCreateModule() {
+            document.getElementById('create-module-popup').style.display = 'flex';
+        }
 
-function showNextSectionPrompt() {
-    if (!isExamMode || isReviewMode) return;
-    const introScreen = document.getElementById('intro-screen');
-    const count = questions.filter(q => q.type === currentSection).length;
-    introScreen.innerHTML = `
-        <h1>Start Section: ${currentSection}</h1>
-        <p>This section has ${count} questions.</p>
-        <p>You will have ${timeLimit / 60} minutes to complete it. You must wait until the timer ends to proceed.</p>
-        <button class="begin-btn" onclick="startSection('${currentSection}')">Begin</button>
-    `;
-    introScreen.style.display = 'block';
-    document.getElementById('question-text').style.display = 'none';
-    document.getElementById('va-question-box').style.display = 'none';
-    document.getElementById('options').style.display = 'none';
-    document.getElementById('qa-input-container').style.display = 'none';
-    document.getElementById('feedback').style.display = 'none';
-    document.getElementById('answer-explanation').style.display = 'none';
-    document.getElementById('next-btn').style.display = 'none';
-    document.getElementById('timer').style.display = 'none';
-}
+        function showInstructionPopup(moduleId) {
+            currentModuleId = moduleId;
+            const module = modulesData.find(m => m.id == moduleId);
+            document.getElementById('instruction-text').value = module.instructions || '';
+            document.getElementById('time-limit-input').value = module.time_limit ? module.time_limit / 60 : '';
+            document.getElementById('instruction-popup').style.display = 'flex';
+        }
 
-function startSection(section) {
-    if (!isExamMode || isReviewMode) return;
-    currentSection = section;
-    currentQuestionIndex = sectionIndices[section];
-    timeRemaining = <%- JSON.stringify(module.time_limit || 2400) %>;
-    sectionStartTime = Date.now();
-    document.getElementById('intro-screen').style.display = 'none';
-    startTimer();
-    displayExamModeQuestion();
-    disableBackNavigation();
-}
+        function hidePopup(popupId) {
+            document.getElementById(popupId).style.display = 'none';
+        }
 
-window.addEventListener('load', () => {
-    if (isReviewMode) {
-        displayReviewModeQuestion();
-        enableBackNavigation();
-    } else if (isExamMode) {
-        showIntroScreen();
-        disableBackNavigation();
-    } else {
-        displayNormalModeQuestion();
-        enableBackNavigation();
-    }
-    updateGoToDropdown();
-});
+        function saveInstructions() {
+            const newInstructions = document.getElementById('instruction-text').value;
+            const newTimeLimit = document.getElementById('time-limit-input').value;
+            fetch(`/admin/edit-module/${currentModuleId}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: `name=${encodeURIComponent(modulesData.find(m => m.id == currentModuleId).name)}&instructions=${encodeURIComponent(newInstructions)}&time_limit=${encodeURIComponent(newTimeLimit)}`
+            }).then(response => response.json())
+              .then(data => {
+                  if (data.success) {
+                      modulesData.find(m => m.id == currentModuleId).instructions = newInstructions;
+                      modulesData.find(m => m.id == currentModuleId).time_limit = newTimeLimit ? newTimeLimit * 60 : null;
+                      hidePopup('instruction-popup');
+                      location.reload();
+                  } else {
+                      alert('Failed to save changes: ' + (data.message || 'Unknown error'));
+                  }
+              }).catch(error => {
+                  console.error('Save error:', error);
+                  alert('Error saving changes: ' + error.message);
+              });
+        }
 
-document.addEventListener('click', (event) => {
-    const dropdown = document.getElementById('goto-dropdown');
-    const gotoButton = document.querySelector('.nav-btn[onclick="toggleGoTo()"]');
-    if (dropdown.style.display === 'block' && !dropdown.contains(event.target) && !gotoButton.contains(event.target)) {
-        dropdown.style.display = 'none';
-    }
-});
+        function deleteModule(moduleId) {
+            if (confirm('Are you sure you want to delete this module and all its questions? This action cannot be undone.')) {
+                fetch(`/admin/delete-module/${moduleId}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                }).then(response => response.json())
+                  .then(data => {
+                      if (data.success) {
+                          document.getElementById(`module-${moduleId}`).remove();
+                          alert('Module deleted successfully');
+                      } else {
+                          alert('Failed to delete module: ' + (data.message || 'Unknown error'));
+                      }
+                  }).catch(error => {
+                      console.error('Delete error:', error);
+                      alert('Error deleting module: ' + error.message);
+                  });
+            }
+        }
 
-if (!isReviewMode) {
-    setInterval(() => {
-        fetch('/keep-alive', {
-            method: 'GET',
-            credentials: 'include'
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (!data.success) console.warn('Keep-alive failed:', data.message);
-        })
-        .catch(err => console.error('Keep-alive error:', err));
-    }, 10 * 60 * 1000);
-}
-</script>
+        function logout() {
+            fetch('/admin-logout', { method: 'POST' })
+                .then(response => {
+                    if (response.redirected) window.location.href = response.url;
+                })
+                .catch(error => console.error('Logout error:', error));
+        }
+    </script>
 </body>
 </html>
