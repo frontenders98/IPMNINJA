@@ -783,36 +783,27 @@ app.get('/dashboard', ensureUserAuthenticated, async (req, res) => {
     }
 });
 
-app.post('/exam/:moduleId/save-answers', ensureUserAuthenticated, async (req, res) => {
+app.post('/exam/:moduleId/save-answer', ensureUserAuthenticated, async (req, res) => {
     const moduleId = parseInt(req.params.moduleId);
-    const { answers } = req.body;
+    const { questionId, answer, time_spent } = req.body;
     try {
-        for (const { questionId, answer } of answers) {
-            const questionResult = await pool.query('SELECT * FROM questions WHERE id = $1 AND module_id = $2', [questionId, moduleId]);
-            const question = questionResult.rows[0];
-            if (!question) continue;
+        const questionResult = await pool.query('SELECT correct_answer FROM questions WHERE id = $1 AND module_id = $2', [questionId, moduleId]);
+        if (questionResult.rows.length === 0) return res.status(404).json({ success: false, message: 'Question not found' });
+        const correctAnswer = questionResult.rows[0].correct_answer;
 
-            const isCorrect = answer === question.correct_answer;
-            const existing = await pool.query(
-                'SELECT 1 FROM user_answers WHERE user_id = $1 AND question_id = $2',
-                [req.session.userId, questionId]
+        const isCorrect = String(answer).trim() === String(correctAnswer).trim();
+        if (answer !== null && answer !== '') {
+            await pool.query(
+                'INSERT INTO user_answers (user_id, question_id, answer, is_correct, time_spent, submitted_at) VALUES ($1, $2, $3, $4, $5, NOW()) ' +
+                'ON CONFLICT (user_id, question_id) DO UPDATE SET answer = $3, is_correct = $4, time_spent = $5, submitted_at = NOW()',
+                [req.session.userId, questionId, answer, isCorrect, time_spent || 0]
             );
-            if (existing.rowCount > 0) {
-                await pool.query(
-                    'UPDATE user_answers SET answer = $1, is_correct = $2, submitted_at = NOW() WHERE user_id = $3 AND question_id = $4',
-                    [answer, isCorrect, req.session.userId, questionId]
-                );
-            } else if (answer !== null && answer !== '') {
-                await pool.query(
-                    'INSERT INTO user_answers (user_id, question_id, answer, is_correct, submitted_at) VALUES ($1, $2, $3, $4, NOW())',
-                    [req.session.userId, questionId, answer, isCorrect]
-                );
-            }
+            console.log('Saved answer:', { userId: req.session.userId, questionId, answer, isCorrect });
         }
         res.json({ success: true });
     } catch (err) {
-        console.error('Save answers error:', err.stack);
-        res.status(500).json({ success: false, message: 'Failed to save answers' });
+        console.error('Save answer error:', { err: err.stack, questionId, answer });
+        res.status(500).json({ success: false, message: 'Failed to save answer' });
     }
 });
 
