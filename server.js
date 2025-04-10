@@ -461,6 +461,9 @@ app.get('/exam/:moduleId', ensureUserAuthenticated, async (req, res) => {
         );
         const userAnswers = answersResult.rows;
 
+        // Log for debugging
+        console.log('User Answers from DB:', userAnswers);
+
         const answers = new Array(questions.length).fill(null);
         let isReviewMode = false;
         if (isExamMode) {
@@ -478,14 +481,21 @@ app.get('/exam/:moduleId', ensureUserAuthenticated, async (req, res) => {
         } else {
             questions.forEach((q, i) => {
                 const userAnswer = userAnswers.find(a => a.question_id === q.id);
-                if (userAnswer) answers[i] = userAnswer.answer;
+                // Treat empty string as an answer for QA
+                if (userAnswer && (userAnswer.answer !== null || q.type === 'QA')) {
+                    answers[i] = userAnswer.answer === '' ? '' : userAnswer.answer;
+                }
             });
         }
 
+        // Log the answers array
+        console.log('Answers array:', answers);
+
         let startIndex = 0;
         if (!isExamMode && !isReviewMode) {
-            const lastAnsweredIndex = answers.reduce((max, answer, i) => answer !== null ? i : max, -1);
-            startIndex = lastAnsweredIndex + 1 < questions.length ? lastAnsweredIndex + 1 : 0;
+            startIndex = answers.findIndex(a => a === null);
+            if (startIndex === -1) startIndex = 0; // All answered, start at 0
+            console.log('Calculated startIndex:', startIndex);
         }
 
         const currentSection = isExamMode && !isReviewMode ? 'QA' : null;
