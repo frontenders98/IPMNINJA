@@ -509,13 +509,9 @@ app.get('/exam/:moduleId', ensureUserAuthenticated, async (req, res) => {
 app.post('/exam/:moduleId/save-answer', ensureUserAuthenticated, async (req, res) => {
     const moduleId = parseInt(req.params.moduleId);
     const { questionId, answer, time_spent } = req.body;
-    console.log('Saving:', { moduleId, questionId, answer, time_spent, userId: req.session.userId });
     try {
         const questionResult = await pool.query('SELECT correct_answer FROM questions WHERE id = $1 AND module_id = $2', [questionId, moduleId]);
-        if (questionResult.rows.length === 0) {
-            console.log('Question not found:', { questionId, moduleId });
-            return res.status(404).json({ success: false, message: 'Question not found' });
-        }
+        if (questionResult.rows.length === 0) return res.status(404).json({ success: false, message: 'Question not found' });
         const correctAnswer = questionResult.rows[0].correct_answer;
 
         const isCorrect = answer === correctAnswer;
@@ -525,7 +521,6 @@ app.post('/exam/:moduleId/save-answer', ensureUserAuthenticated, async (req, res
                 'ON CONFLICT (user_id, question_id) DO UPDATE SET answer = $3, is_correct = $4, time_spent = $5, submitted_at = NOW()',
                 [req.session.userId, questionId, answer, isCorrect, time_spent || 0]
             );
-            console.log('Saved:', { questionId, answer });
         }
         res.json({ success: true });
     } catch (err) {
