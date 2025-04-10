@@ -1038,7 +1038,7 @@
             }).then(data => {
                 if (data.success) {
                     examCompleted = true;
-                    window.location.href = '/exam-completed'; // Assuming this is the route to exam-completed.ejs
+                    window.location.href = '/exam-complete'; // Assuming this is the route to exam-complete.ejs
                 } else {
                     console.error('Server response:', data);
                     alert('Failed to save exam answers: ' + data.message);
@@ -1166,13 +1166,13 @@
             if (!isExamMode || isReviewMode) return;
             const introScreen = document.getElementById('intro-screen');
             const completedCount = questions.filter(q => q.type === completedSection).length;
-            const nextCount = nextSection === 'exam-completed' ? 0 : questions.filter(q => q.type === nextSection).length;
-            const nextText = nextSection === 'exam-completed' ? 'You have completed the exam!' : `Next is ${nextSection} with ${nextCount} questions and ${timeLimit / 60} minutes.`;
+            const nextCount = nextSection === 'exam-complete' ? 0 : questions.filter(q => q.type === nextSection).length;
+            const nextText = nextSection === 'exam-complete' ? 'You have completed the exam!' : `Next is ${nextSection} with ${nextCount} questions and ${timeLimit / 60} minutes.`;
             introScreen.innerHTML = `
                 <h1>Section Complete: ${completedSection}</h1>
                 <p>You have completed ${completedCount} questions in ${completedSection}.</p>
                 <p>${nextText}</p>
-                ${nextSection === 'exam-completed' ? '' : '<button class="begin-btn" onclick="startSection(\'' + nextSection + '\')">Continue</button>'}
+                ${nextSection === 'exam-complete' ? '' : '<button class="begin-btn" onclick="startSection(\'' + nextSection + '\')">Continue</button>'}
             `;
             introScreen.style.display = 'block';
             document.getElementById('question-text').style.display = 'none';
@@ -1184,12 +1184,9 @@
             document.getElementById('next-btn').style.display = 'none';
             document.getElementById('timer').style.display = 'none';
         
-            if (nextSection === 'exam-completed') {
-                setTimeout(() => {
-                    completeExam();
-                }, 2000); // Brief pause before redirecting to exam-completed.ejs
-            }
-        }
+           if (nextSection === 'exam-complete') {
+    completeExam();
+}
         
         function startSection(section) {
             if (!isExamMode || isReviewMode) return;
