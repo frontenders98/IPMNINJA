@@ -593,16 +593,18 @@ app.get('/exam/:moduleId/finish', ensureUserAuthenticated, async (req, res) => {
     }
 });
 
-app.get('/exam/:moduleId/complete', ensureUserAuthenticated, async (req, res) => {
+app.get('/exam/:moduleId', ensureUserAuthenticated, async (req, res) => {
     const moduleId = parseInt(req.params.moduleId);
     const userId = req.session.userId;
     try {
         const moduleResult = await pool.query('SELECT * FROM modules WHERE id = $1', [moduleId]);
         if (moduleResult.rows.length === 0) return res.status(404).send('Module not found');
         const module = moduleResult.rows[0];
+        const isExamMode = module.name.startsWith('Exam Mode');
 
         const questionResult = await pool.query('SELECT * FROM questions WHERE module_id = $1 ORDER BY id', [moduleId]);
         const questions = questionResult.rows;
+        if (questions.length === 0) return res.send('No questions in this module');
 
         const answersResult = await pool.query(
             'SELECT question_id, answer FROM user_answers WHERE user_id = $1 AND question_id IN (SELECT id FROM questions WHERE module_id = $2)',
@@ -610,23 +612,36 @@ app.get('/exam/:moduleId/complete', ensureUserAuthenticated, async (req, res) =>
         );
         const userAnswers = answersResult.rows;
 
+        // Map answers by question_id to match questions order
         const answers = questions.map(q => {
             const userAnswer = userAnswers.find(a => a.question_id === q.id);
             return userAnswer ? userAnswer.answer : null;
         });
 
+        // Define isReviewMode before using it
+        const isReviewMode = isExamMode && userAnswers.length >= questions.length;
+
+        let startIndex = 0;
+        if (!isExamMode && !isReviewMode) {
+            const lastAnsweredIndex = answers.reduce((max, answer, i) => 
+                answer !== null && answer !== undefined ? i : max, -1);
+            startIndex = lastAnsweredIndex + 1 < questions.length ? lastAnsweredIndex + 1 : 0;
+        }
+
+        const currentSection = isExamMode && !isReviewMode ? 'QA' : null;
+
         res.render('exam', {
             questions,
             module,
-            startIndex: 0,
-            isExamMode: false,
-            isReviewMode: true,
+            startIndex,
+            isExamMode,
+            isReviewMode,
             timeLimit: module.time_limit || 2400,
             answers,
-            currentSection: null
+            currentSection
         });
     } catch (err) {
-        console.error('Exam complete fetch error:', err.stack);
+        console.error('Exam fetch error:', err.stack);
         res.status(500).send('Server error');
     }
 });
