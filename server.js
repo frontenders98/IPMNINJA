@@ -461,11 +461,12 @@ app.get('/exam/:moduleId', ensureUserAuthenticated, async (req, res) => {
         );
         const userAnswers = answersResult.rows;
 
-        // Map answers by question_id to match questions order
         const answers = questions.map(q => {
             const userAnswer = userAnswers.find(a => a.question_id === q.id);
             return userAnswer ? userAnswer.answer : null;
         });
+
+        const isReviewMode = isExamMode && userAnswers.length >= questions.length;
 
         let startIndex = 0;
         if (!isExamMode && !isReviewMode) {
@@ -481,7 +482,7 @@ app.get('/exam/:moduleId', ensureUserAuthenticated, async (req, res) => {
             module,
             startIndex,
             isExamMode,
-            isReviewMode: isExamMode && userAnswers.length >= questions.length,
+            isReviewMode,
             timeLimit: module.time_limit || 2400,
             answers,
             currentSection
