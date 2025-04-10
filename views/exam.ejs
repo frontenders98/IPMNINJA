@@ -482,7 +482,7 @@
         <% } %>
     </div>
     <script>
-        let questions = <%- JSON.stringify(questions) %>; // Use server order (QA, MCQ, VA, then id)
+        let questions = <%- JSON.stringify(questions) %>; // Server order: QA, MCQ, VA, then id
         let currentQuestionIndex = <%- JSON.stringify(startIndex) %>;
         let answers = <%- JSON.stringify(answers) %>;
         const isExamMode = <%- JSON.stringify(isExamMode) %>;
@@ -492,17 +492,32 @@
         let timerInterval = null;
         let timeRemaining = timeLimit;
         let currentSection = <%- JSON.stringify(currentSection) %>;
-        let sectionIndices = isExamMode && !isReviewMode ? { QA: -1, MCQ: -1, VA: -1 } : null;
+        let sectionIndices = { QA: -1, MCQ: -1, VA: -1 };
         let examCompleted = false;
         let questionStartTime = null;
-        let resumeIndex = answers.findIndex(a => a === null) === -1 ? questions.length : answers.findIndex(a => a === null);
         let sectionStartTime = null;
         
-        // Calculate section indices without sorting
+        // Set section indices and adjust on re-entry
         if (isExamMode && !isReviewMode) {
             sectionIndices.QA = questions.findIndex(q => q.type === 'QA');
             sectionIndices.MCQ = questions.findIndex(q => q.type === 'MCQ');
             sectionIndices.VA = questions.findIndex(q => q.type === 'VA');
+        
+            // On re-entry, set currentSection based on last answered question
+            if (currentQuestionIndex > 0 && !examCompleted) {
+                const lastAnsweredIdx = answers.findLastIndex(a => a !== null);
+                if (lastAnsweredIdx >= sectionIndices.VA && sectionIndices.VA !== -1) {
+                    currentSection = 'VA';
+                    currentQuestionIndex = lastAnsweredIdx + 1 >= questions.length ? sectionIndices.VA : lastAnsweredIdx + 1;
+                } else if (lastAnsweredIdx >= sectionIndices.MCQ && sectionIndices.MCQ !== -1) {
+                    currentSection = 'MCQ';
+                    currentQuestionIndex = lastAnsweredIdx + 1 >= sectionIndices.VA ? sectionIndices.MCQ : lastAnsweredIdx + 1;
+                } else {
+                    currentSection = 'QA';
+                    currentQuestionIndex = lastAnsweredIdx + 1 >= sectionIndices.MCQ ? sectionIndices.QA : lastAnsweredIdx + 1;
+                }
+                timeRemaining = <%- JSON.stringify(module.time_limit || 2400) %> - (Date.now() - sectionStartTime) / 1000 || timeLimit;
+            }
         }
         
         function disableBackNavigation() {
@@ -679,13 +694,13 @@
             document.getElementById('feedback').style.display = 'none';
             document.getElementById('answer-explanation').style.display = 'none';
         
-            // Disable Next button on last question of section if time remains
-            const lastQA = sectionIndices.QA === -1 ? -1 : sectionIndices.QA + questions.filter(q => q.type === 'QA').length - 1;
-            const lastMCQ = sectionIndices.MCQ === -1 ? -1 : sectionIndices.MCQ + questions.filter(q => q.type === 'MCQ').length - 1;
-            const lastVA = sectionIndices.VA === -1 ? -1 : sectionIndices.VA + questions.filter(q => q.type === 'VA').length - 1;
-            nextBtn.disabled = (currentQuestionIndex === lastQA && currentSection === 'QA') ||
-                              (currentQuestionIndex === lastMCQ && currentSection === 'MCQ') ||
-                              (currentQuestionIndex === lastVA && currentSection === 'VA') && timeRemaining > 0;
+            // Lock "Next" button on last question of section if time remains
+            const lastQA = sectionIndices.QA + questions.filter(q => q.type === 'QA').length - 1;
+            const lastMCQ = sectionIndices.MCQ + questions.filter(q => q.type === 'MCQ').length - 1;
+            const lastVA = sectionIndices.VA + questions.filter(q => q.type === 'VA').length - 1;
+            nextBtn.disabled = ((currentQuestionIndex === lastQA && currentSection === 'QA') ||
+                               (currentQuestionIndex === lastMCQ && currentSection === 'MCQ') ||
+                               (currentQuestionIndex === lastVA && currentSection === 'VA')) && timeRemaining > 0;
         
             MathJax.typesetPromise().catch(err => console.error('MathJax error:', err));
         }
@@ -881,24 +896,21 @@
         
         function nextQuestion() {
             if (isExamMode && !isReviewMode) {
-                const lastQA = sectionIndices.QA === -1 ? -1 : sectionIndices.QA + questions.filter(q => q.type === 'QA').length - 1;
-                const lastMCQ = sectionIndices.MCQ === -1 ? -1 : sectionIndices.MCQ + questions.filter(q => q.type === 'MCQ').length - 1;
-                const lastVA = sectionIndices.VA === -1 ? -1 : sectionIndices.VA + questions.filter(q => q.type === 'VA').length - 1;
+                const lastQA = sectionIndices.QA + questions.filter(q => q.type === 'QA').length - 1;
+                const lastMCQ = sectionIndices.MCQ + questions.filter(q => q.type === 'MCQ').length - 1;
+                const lastVA = sectionIndices.VA + questions.filter(q => q.type === 'VA').length - 1;
         
                 if ((currentQuestionIndex === lastQA && currentSection === 'QA') || 
                     (currentQuestionIndex === lastMCQ && currentSection === 'MCQ') || 
                     (currentQuestionIndex === lastVA && currentSection === 'VA')) {
-                    if (timeRemaining > 0) {
-                        return; // Silently block, no popup
-                    }
-                    // Timer handles section completion via startTimer()
+                    if (timeRemaining > 0) return; // Silent block, no popup
+                    // Timer drives section completion
                 } else if (currentQuestionIndex < questions.length - 1) {
                     const q = questions[currentQuestionIndex];
                     if (q.type === 'QA') {
                         const userAnswer = document.getElementById('qa-input').value.trim();
-                        if (userAnswer) {
-                            saveAndProceed(userAnswer, q);
-                        } else {
+                        if (userAnswer) saveAndProceed(userAnswer, q);
+                        else {
                             currentQuestionIndex++;
                             displayExamModeQuestion();
                         }
@@ -933,17 +945,12 @@
             fetch(`/exam/${<%- JSON.stringify(module.id) %>}/save-answer`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    questionId: q.id,
-                    answer: userAnswer,
-                    time_spent: timeSpent
-                })
+                body: JSON.stringify({ questionId: q.id, answer: userAnswer, time_spent: timeSpent })
             })
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
                     answers[currentQuestionIndex] = userAnswer;
-                    resumeIndex = answers.findIndex(a => a === null) === -1 ? questions.length : answers.findIndex(a => a === null);
                     if (currentQuestionIndex < questions.length - 1) {
                         currentQuestionIndex++;
                         if (isExamMode && !isReviewMode) displayExamModeQuestion();
@@ -984,10 +991,7 @@
         
         function skipQuestion() {
             if (!isExamMode && !isReviewMode && currentQuestionIndex < questions.length - 1) {
-                if (!answers[currentQuestionIndex]) {
-                    skipped[currentQuestionIndex] = true;
-                    resumeIndex = answers.findIndex(a => a === null) === -1 ? questions.length : answers.findIndex(a => a === null);
-                }
+                if (!answers[currentQuestionIndex]) skipped[currentQuestionIndex] = true;
                 currentQuestionIndex++;
                 displayQuestion();
                 updateGoToDropdown();
@@ -1000,16 +1004,16 @@
         
             if (currentSection === 'QA') {
                 currentSection = 'MCQ';
-                currentQuestionIndex = sectionIndices.MCQ !== -1 ? sectionIndices.MCQ : questions.length;
+                currentQuestionIndex = sectionIndices.MCQ;
                 timeRemaining = <%- JSON.stringify(module.time_limit || 2400) %>;
                 showSectionCompleteScreen('QA', 'MCQ');
             } else if (currentSection === 'MCQ') {
                 currentSection = 'VA';
-                currentQuestionIndex = sectionIndices.VA !== -1 ? sectionIndices.VA : questions.length;
+                currentQuestionIndex = sectionIndices.VA;
                 timeRemaining = <%- JSON.stringify(module.time_limit || 2400) %>;
                 showSectionCompleteScreen('MCQ', 'VA');
             } else if (currentSection === 'VA') {
-                completeExam(); // Skip VA banner, go straight to completion
+                completeExam(); // No VA banner, straight to finish
             }
         }
         
@@ -1022,7 +1026,7 @@
             };
             const totalTime = <%- JSON.stringify(module.time_limit || 2400) %>;
             const timePerSection = totalTime;
-            const timeSpent = Math.floor((Date.now() - sectionStartTime) / 1000);
+            const timeSpent = sectionStartTime ? Math.floor((Date.now() - sectionStartTime) / 1000) : totalTime;
         
             const answersWithTime = answers.map((answer, i) => {
                 const q = questions[i];
@@ -1030,9 +1034,8 @@
                 if (q.type === 'QA') sectionTimeSpent = i === sectionIndices.QA ? timePerSection - timeRemaining : timePerSection / sectionCounts.QA;
                 else if (q.type === 'MCQ') sectionTimeSpent = i === sectionIndices.MCQ ? timePerSection - timeRemaining : timePerSection / sectionCounts.MCQ;
                 else sectionTimeSpent = i === sectionIndices.VA ? timeSpent : timePerSection / sectionCounts.VA;
-                return { questionId: q.id, answer, time_spent: Math.round(sectionTimeSpent) };
+                return { questionId: q.id, answer, time_spent: Math.round(sectionTimeSpent) || 0 };
             });
-            console.log('Sending answers to server:', answersWithTime);
         
             fetch(`/exam/${<%- JSON.stringify(module.id) %>}/complete`, {
                 method: 'POST',
@@ -1044,7 +1047,7 @@
             }).then(data => {
                 if (data.success) {
                     examCompleted = true;
-                    window.location.href = `/exam/${<%- JSON.stringify(module.id) %>}/finish`; // Redirect to exam-complete.ejs
+                    window.location.href = `/exam/${<%- JSON.stringify(module.id) %>}/finish`; // Straight to exam-complete.ejs
                 } else {
                     console.error('Server response:', data);
                     alert('Failed to save exam answers: ' + data.message);
@@ -1106,19 +1109,14 @@
                             const globalIndex = questions.indexOf(q);
                             const item = document.createElement('div');
                             item.className = 'goto-item';
-                            if (!isReviewMode && globalIndex > resumeIndex && !answers[globalIndex] && !skipped[globalIndex]) {
-                                item.className += ' unattempted';
-                            }
                             if (skipped[globalIndex]) item.className += ' skipped';
                             item.innerHTML = `Question ${index + 1}${answers[globalIndex] ? ' ✓' : ''}`;
-                            if (isReviewMode || answers[globalIndex] || skipped[globalIndex] || globalIndex <= resumeIndex) {
-                                item.onclick = () => {
-                                    currentQuestionIndex = globalIndex;
-                                    if (isReviewMode) displayReviewModeQuestion();
-                                    else displayNormalModeQuestion();
-                                    dropdown.style.display = 'none';
-                                };
-                            }
+                            item.onclick = () => {
+                                currentQuestionIndex = globalIndex;
+                                if (isReviewMode) displayReviewModeQuestion();
+                                else displayNormalModeQuestion();
+                                dropdown.style.display = 'none';
+                            };
                             section.appendChild(item);
                         });
                         dropdown.appendChild(section);
@@ -1193,7 +1191,7 @@
         function startSection(section) {
             if (!isExamMode || isReviewMode) return;
             currentSection = section;
-            currentQuestionIndex = sectionIndices[section] !== -1 ? sectionIndices[section] : questions.length;
+            currentQuestionIndex = sectionIndices[section];
             timeRemaining = <%- JSON.stringify(module.time_limit || 2400) %>;
             sectionStartTime = Date.now();
             document.getElementById('intro-screen').style.display = 'none';
@@ -1207,8 +1205,18 @@
                 displayReviewModeQuestion();
                 enableBackNavigation();
             } else if (isExamMode) {
-                showIntroScreen();
-                disableBackNavigation();
+                const lastAnsweredIdx = answers.findLastIndex(a => a !== null);
+                if (lastAnsweredIdx === questions.length - 1) {
+                    examCompleted = true;
+                    window.location.href = `/exam/${<%- JSON.stringify(module.id) %>}/finish`;
+                } else if (lastAnsweredIdx >= 0) {
+                    startTimer();
+                    displayExamModeQuestion();
+                    disableBackNavigation();
+                } else {
+                    showIntroScreen();
+                    disableBackNavigation();
+                }
             } else {
                 displayNormalModeQuestion();
                 enableBackNavigation();
