@@ -461,30 +461,16 @@ app.get('/exam/:moduleId', ensureUserAuthenticated, async (req, res) => {
         );
         const userAnswers = answersResult.rows;
 
-        const answers = new Array(questions.length).fill(null);
-        let isReviewMode = false;
-        if (isExamMode) {
-            const submittedResult = await pool.query(
-                'SELECT COUNT(DISTINCT question_id) as submitted FROM user_answers WHERE user_id = $1 AND question_id IN (SELECT id FROM questions WHERE module_id = $2)',
-                [userId, moduleId]
-            );
-            isReviewMode = submittedResult.rows[0].submitted >= questions.length;
-            if (isReviewMode) {
-                questions.forEach((q, i) => {
-                    const userAnswer = userAnswers.find(a => a.question_id === q.id);
-                    if (userAnswer) answers[i] = userAnswer.answer;
-                });
-            }
-        } else {
-            questions.forEach((q, i) => {
-                const userAnswer = userAnswers.find(a => a.question_id === q.id);
-                if (userAnswer) answers[i] = userAnswer.answer;
-            });
-        }
+        // Map answers by question_id to match questions order
+        const answers = questions.map(q => {
+            const userAnswer = userAnswers.find(a => a.question_id === q.id);
+            return userAnswer ? userAnswer.answer : null;
+        });
 
         let startIndex = 0;
         if (!isExamMode && !isReviewMode) {
-            const lastAnsweredIndex = answers.reduce((max, answer, i) => answer !== null ? i : max, -1);
+            const lastAnsweredIndex = answers.reduce((max, answer, i) => 
+                answer !== null && answer !== undefined ? i : max, -1);
             startIndex = lastAnsweredIndex + 1 < questions.length ? lastAnsweredIndex + 1 : 0;
         }
 
@@ -495,7 +481,7 @@ app.get('/exam/:moduleId', ensureUserAuthenticated, async (req, res) => {
             module,
             startIndex,
             isExamMode,
-            isReviewMode,
+            isReviewMode: isExamMode && userAnswers.length >= questions.length,
             timeLimit: module.time_limit || 2400,
             answers,
             currentSection
