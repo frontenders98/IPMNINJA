@@ -503,8 +503,10 @@ if (!isExamMode && !isReviewMode) {
         const order = { 'QA': 0, 'MCQ': 1, 'VA': 2 };
         return order[a.type] - order[b.type] || a.id - b.id;
     });
-    resumeIndex = answers.findIndex(a => a === null || a === undefined);
-    if (resumeIndex === -1) resumeIndex = 0; // Start at 0 if all answered
+    // Find the last answered question, then move to the next
+    const lastAnsweredIndex = answers.reduce((max, answer, i) => 
+        answer !== null && answer !== undefined ? i : max, -1);
+    resumeIndex = lastAnsweredIndex + 1 < questions.length ? lastAnsweredIndex + 1 : 0;
     currentQuestionIndex = resumeIndex;
     console.log('Normal mode resume index:', resumeIndex, 'Answers:', answers);
 } else if (isExamMode && !isReviewMode) {
