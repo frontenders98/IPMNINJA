@@ -904,13 +904,8 @@ function updateFeedbackAndExplanation() {
 function nextQuestion() {
     if (isExamMode && !isReviewMode) {
         const lastQA = sectionIndices.QA + questions.filter(q => q.type === 'QA').length - 1;
-        const lastMCQ = sectionIndices.MCQ + questions.filter(q => q.type === 'MCQ').length - 1;
-        const isLastInSection = (currentSection === 'QA' && currentQuestionIndex === lastQA) ||
-                               (currentSection === 'MCQ' && currentQuestionIndex === lastMCQ) ||
-                               (currentSection === 'VA' && currentQuestionIndex === questions.length - 1);
-
-        if (isLastInSection && timeRemaining > 0) {
-            displayExamModeQuestion();
+        if (currentQuestionIndex === lastQA && currentSection === 'QA') {
+            completeSection();
         } else if (currentQuestionIndex < questions.length - 1) {
             currentQuestionIndex++;
             displayExamModeQuestion();
@@ -923,8 +918,18 @@ function nextQuestion() {
             window.location.href = '/index';
         }
     } else {
-        currentQuestionIndex++;
-        displayNormalModeQuestion();
+        fetch(`/exam/${<%- JSON.stringify(module.id) %>}/save-answer`, { // Ensure save before moving
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ questionId: questions[currentQuestionIndex].id, answer: answers[currentQuestionIndex], time_spent: Math.floor((Date.now() - questionStartTime) / 1000) })
+        }).then(() => {
+            if (currentQuestionIndex < questions.length - 1) {
+                currentQuestionIndex++;
+                displayNormalModeQuestion();
+            } else {
+                window.location.href = '/index';
+            }
+        });
     }
 }
 
