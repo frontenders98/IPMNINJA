@@ -633,7 +633,6 @@
                 optionsDiv.style.display = 'flex';
                 qaInputContainer.style.display = 'none';
                 nextBtn.style.display = 'block';
-                nextBtn.disabled = false;
         
                 const options = [
                     { letter: 'A', value: q.option_a },
@@ -671,7 +670,6 @@
                 optionsDiv.style.display = 'none';
                 qaInputContainer.style.display = 'flex';
                 nextBtn.style.display = 'block';
-                nextBtn.disabled = false;
                 document.getElementById('qa-input').value = answers[currentQuestionIndex] || '';
                 document.getElementById('qa-input').oninput = (e) => answers[currentQuestionIndex] = e.target.value.trim();
                 document.getElementById('qa-input').disabled = false;
@@ -680,6 +678,14 @@
         
             document.getElementById('feedback').style.display = 'none';
             document.getElementById('answer-explanation').style.display = 'none';
+        
+            // Disable Next button on last question of section if time remains
+            const lastQA = sectionIndices.QA === -1 ? -1 : sectionIndices.QA + questions.filter(q => q.type === 'QA').length - 1;
+            const lastMCQ = sectionIndices.MCQ === -1 ? -1 : sectionIndices.MCQ + questions.filter(q => q.type === 'MCQ').length - 1;
+            const lastVA = sectionIndices.VA === -1 ? -1 : sectionIndices.VA + questions.filter(q => q.type === 'VA').length - 1;
+            nextBtn.disabled = (currentQuestionIndex === lastQA && currentSection === 'QA') ||
+                              (currentQuestionIndex === lastMCQ && currentSection === 'MCQ') ||
+                              (currentQuestionIndex === lastVA && currentSection === 'VA') && timeRemaining > 0;
         
             MathJax.typesetPromise().catch(err => console.error('MathJax error:', err));
         }
@@ -879,14 +885,13 @@
                 const lastMCQ = sectionIndices.MCQ === -1 ? -1 : sectionIndices.MCQ + questions.filter(q => q.type === 'MCQ').length - 1;
                 const lastVA = sectionIndices.VA === -1 ? -1 : sectionIndices.VA + questions.filter(q => q.type === 'VA').length - 1;
         
-                if (currentQuestionIndex === lastQA && currentSection === 'QA' || 
-                    currentQuestionIndex === lastMCQ && currentSection === 'MCQ' || 
-                    currentQuestionIndex === lastVA && currentSection === 'VA') {
+                if ((currentQuestionIndex === lastQA && currentSection === 'QA') || 
+                    (currentQuestionIndex === lastMCQ && currentSection === 'MCQ') || 
+                    (currentQuestionIndex === lastVA && currentSection === 'VA')) {
                     if (timeRemaining > 0) {
-                        alert('Please wait until the timer ends to proceed.');
-                        return;
+                        return; // Silently block, no popup
                     }
-                    // If timer’s at 0, let completeSection() handle it via startTimer()
+                    // Timer handles section completion via startTimer()
                 } else if (currentQuestionIndex < questions.length - 1) {
                     const q = questions[currentQuestionIndex];
                     if (q.type === 'QA') {
@@ -1004,7 +1009,7 @@
                 timeRemaining = <%- JSON.stringify(module.time_limit || 2400) %>;
                 showSectionCompleteScreen('MCQ', 'VA');
             } else if (currentSection === 'VA') {
-                showSectionCompleteScreen('VA', 'exam-complete');
+                completeExam(); // Skip VA banner, go straight to completion
             }
         }
         
@@ -1039,7 +1044,7 @@
             }).then(data => {
                 if (data.success) {
                     examCompleted = true;
-                    window.location.href = '/exam-complete'; // Updated to exam-complete.ejs
+                    window.location.href = `/exam/${<%- JSON.stringify(module.id) %>}/finish`; // Redirect to exam-complete.ejs
                 } else {
                     console.error('Server response:', data);
                     alert('Failed to save exam answers: ' + data.message);
@@ -1167,13 +1172,12 @@
             if (!isExamMode || isReviewMode) return;
             const introScreen = document.getElementById('intro-screen');
             const completedCount = questions.filter(q => q.type === completedSection).length;
-            const nextCount = nextSection === 'exam-complete' ? 0 : questions.filter(q => q.type === nextSection).length;
-            const nextText = nextSection === 'exam-complete' ? 'You have completed the exam!' : `Next is ${nextSection} with ${nextCount} questions and ${timeLimit / 60} minutes.`;
+            const nextCount = questions.filter(q => q.type === nextSection).length;
             introScreen.innerHTML = `
                 <h1>Section Complete: ${completedSection}</h1>
                 <p>You have completed ${completedCount} questions in ${completedSection}.</p>
-                <p>${nextText}</p>
-                ${nextSection === 'exam-complete' ? '' : '<button class="begin-btn" onclick="startSection(\'' + nextSection + '\')">Continue</button>'}
+                <p>Next is ${nextSection} with ${nextCount} questions and ${timeLimit / 60} minutes.</p>
+                <button class="begin-btn" onclick="startSection('${nextSection}')">Continue</button>
             `;
             introScreen.style.display = 'block';
             document.getElementById('question-text').style.display = 'none';
@@ -1184,10 +1188,6 @@
             document.getElementById('answer-explanation').style.display = 'none';
             document.getElementById('next-btn').style.display = 'none';
             document.getElementById('timer').style.display = 'none';
-        
-            if (nextSection === 'exam-complete') {
-                completeExam(); // No delay, straight to exam-complete.ejs
-            }
         }
         
         function startSection(section) {
