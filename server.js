@@ -126,7 +126,10 @@ app.get('/index', ensureUserAuthenticated, async (req, res) => {
 
         const modulesWithStatus = modules.map(module => ({
             ...module,
-            isComplete: module.name.startsWith('Exam Mode') && submittedModules.has(module.id)
+            // Only mark as complete if all questions are answered
+            isComplete: module.name.startsWith('Exam Mode') && 
+                        submittedModules.has(module.id) && 
+                        (answeredCounts[module.id] || 0) === (questionCounts[module.id] || 0)
         }));
 
         res.render('index', { modules: modulesWithStatus });
