@@ -872,51 +872,55 @@
         
             MathJax.typesetPromise().catch(err => console.error('MathJax error:', err));
         }
-        
-        function nextQuestion() {
-            if (isExamMode && !isReviewMode) {
-                const lastQA = sectionIndices.QA === -1 ? -1 : sectionIndices.QA + questions.filter(q => q.type === 'QA').length - 1;
-                const lastMCQ = sectionIndices.MCQ === -1 ? -1 : sectionIndices.MCQ + questions.filter(q => q.type === 'MCQ').length - 1;
-                const lastVA = sectionIndices.VA === -1 ? -1 : sectionIndices.VA + questions.filter(q => q.type === 'VA').length - 1;
-        
-                if (currentQuestionIndex < questions.length - 1) {
-                    const q = questions[currentQuestionIndex];
-                    if (q.type === 'QA') {
-                        const userAnswer = document.getElementById('qa-input').value.trim();
-                        if (userAnswer) {
-                            saveAndProceed(userAnswer, q);
-                        } else {
-                            currentQuestionIndex++;
-                            displayExamModeQuestion();
-                        }
-                    } else {
-                        currentQuestionIndex++;
-                        displayExamModeQuestion();
-                    }
-                } else if (currentQuestionIndex === lastVA && currentSection === 'VA' && timeRemaining <= 0) {
-                    completeExam();
-                }
-                // No manual section completion here—timer handles it
-            } else if (isReviewMode) {
-                if (currentQuestionIndex < questions.length - 1) {
-                    currentQuestionIndex++;
-                    displayReviewModeQuestion();
+       function nextQuestion() {
+    if (isExamMode && !isReviewMode) {
+        const lastQA = sectionIndices.QA === -1 ? -1 : sectionIndices.QA + questions.filter(q => q.type === 'QA').length - 1;
+        const lastMCQ = sectionIndices.MCQ === -1 ? -1 : sectionIndices.MCQ + questions.filter(q => q.type === 'MCQ').length - 1;
+        const lastVA = sectionIndices.VA === -1 ? -1 : sectionIndices.VA + questions.filter(q => q.type === 'VA').length - 1;
+
+        if (currentQuestionIndex === lastQA && currentSection === 'QA' || 
+            currentQuestionIndex === lastMCQ && currentSection === 'MCQ' || 
+            currentQuestionIndex === lastVA && currentSection === 'VA') {
+            if (timeRemaining > 0) {
+                alert('Please wait until the timer ends to proceed.');
+                return;
+            }
+            // If timer’s at 0, let completeSection() handle it via startTimer()
+        } else if (currentQuestionIndex < questions.length - 1) {
+            const q = questions[currentQuestionIndex];
+            if (q.type === 'QA') {
+                const userAnswer = document.getElementById('qa-input').value.trim();
+                if (userAnswer) {
+                    saveAndProceed(userAnswer, q);
                 } else {
-                    window.location.href = '/index';
+                    currentQuestionIndex++;
+                    displayExamModeQuestion();
                 }
             } else {
-                const q = questions[currentQuestionIndex];
-                const userAnswer = q.type === 'QA' ? document.getElementById('qa-input').value.trim() : answers[currentQuestionIndex];
-                if (q.type === 'QA' && userAnswer && !answers[currentQuestionIndex]) {
-                    saveAndProceed(userAnswer, q);
-                } else if (currentQuestionIndex < questions.length - 1) {
-                    currentQuestionIndex++;
-                    displayNormalModeQuestion();
-                } else {
-                    window.location.href = '/index';
-                }
+                currentQuestionIndex++;
+                displayExamModeQuestion();
             }
         }
+    } else if (isReviewMode) {
+        if (currentQuestionIndex < questions.length - 1) {
+            currentQuestionIndex++;
+            displayReviewModeQuestion();
+        } else {
+            window.location.href = '/index';
+        }
+    } else {
+        const q = questions[currentQuestionIndex];
+        const userAnswer = q.type === 'QA' ? document.getElementById('qa-input').value.trim() : answers[currentQuestionIndex];
+        if (q.type === 'QA' && userAnswer && !answers[currentQuestionIndex]) {
+            saveAndProceed(userAnswer, q);
+        } else if (currentQuestionIndex < questions.length - 1) {
+            currentQuestionIndex++;
+            displayNormalModeQuestion();
+        } else {
+            window.location.href = '/index';
+        }
+    }
+}
         
         function saveAndProceed(userAnswer, q) {
             const timeSpent = Math.floor((Date.now() - questionStartTime) / 1000);
