@@ -503,9 +503,10 @@ if (!isExamMode && !isReviewMode) {
         const order = { 'QA': 0, 'MCQ': 1, 'VA': 2 };
         return order[a.type] - order[b.type] || a.id - b.id;
     });
-    resumeIndex = answers.findIndex(a => !a);
-    if (resumeIndex === -1) resumeIndex = answers.length;
+    resumeIndex = answers.findIndex(a => a === null || a === undefined);
+    if (resumeIndex === -1) resumeIndex = 0; // Start at 0 if all answered
     currentQuestionIndex = resumeIndex;
+    console.log('Normal mode resume index:', resumeIndex, 'Answers:', answers);
 } else if (isExamMode && !isReviewMode) {
     questions.sort((a, b) => {
         if (a.type === 'QA' && b.type !== 'QA') return -1;
