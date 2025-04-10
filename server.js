@@ -461,7 +461,12 @@ app.get('/exam/:moduleId', ensureUserAuthenticated, async (req, res) => {
         );
         const userAnswers = answersResult.rows;
 
-        const answers = new Array(questions.length).fill(null);
+        const answers = questions.map(q => {
+            const userAnswer = userAnswers.find(a => a.question_id === q.id);
+            return userAnswer ? userAnswer.answer : null;
+        });
+
+        let startIndex = 0;
         let isReviewMode = false;
         if (isExamMode) {
             const submittedResult = await pool.query(
@@ -469,23 +474,10 @@ app.get('/exam/:moduleId', ensureUserAuthenticated, async (req, res) => {
                 [userId, moduleId]
             );
             isReviewMode = submittedResult.rows[0].submitted >= questions.length;
-            if (isReviewMode) {
-                questions.forEach((q, i) => {
-                    const userAnswer = userAnswers.find(a => a.question_id === q.id);
-                    if (userAnswer) answers[i] = userAnswer.answer;
-                });
-            }
         } else {
-            questions.forEach((q, i) => {
-                const userAnswer = userAnswers.find(a => a.question_id === q.id);
-                if (userAnswer) answers[i] = userAnswer.answer;
-            });
-        }
-
-        let startIndex = 0;
-        if (!isExamMode && !isReviewMode) {
             const lastAnsweredIndex = answers.reduce((max, answer, i) => answer !== null ? i : max, -1);
             startIndex = lastAnsweredIndex + 1 < questions.length ? lastAnsweredIndex + 1 : 0;
+            console.log('Normal mode start:', { startIndex, answers }); // Debug
         }
 
         const currentSection = isExamMode && !isReviewMode ? 'QA' : null;
@@ -514,7 +506,7 @@ app.post('/exam/:moduleId/save-answer', ensureUserAuthenticated, async (req, res
         if (questionResult.rows.length === 0) return res.status(404).json({ success: false, message: 'Question not found' });
         const correctAnswer = questionResult.rows[0].correct_answer;
 
-        const isCorrect = answer === correctAnswer;
+        const isCorrect = String(answer).trim() === String(correctAnswer).trim(); // Ensure string comparison
         if (answer !== null && answer !== '') {
             await pool.query(
                 'INSERT INTO user_answers (user_id, question_id, answer, is_correct, time_spent, submitted_at) VALUES ($1, $2, $3, $4, $5, NOW()) ' +
@@ -524,7 +516,7 @@ app.post('/exam/:moduleId/save-answer', ensureUserAuthenticated, async (req, res
         }
         res.json({ success: true });
     } catch (err) {
-        console.error('Save answer error:', err.stack);
+        console.error('Save answer error:', { err: err.stack, questionId, answer });
         res.status(500).json({ success: false, message: 'Failed to save answer' });
     }
 });
