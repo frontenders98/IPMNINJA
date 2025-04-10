@@ -461,16 +461,30 @@ app.get('/exam/:moduleId', ensureUserAuthenticated, async (req, res) => {
         );
         const userAnswers = answersResult.rows;
 
-        // Map answers by question_id to match questions order
-        const answers = questions.map(q => {
-            const userAnswer = userAnswers.find(a => a.question_id === q.id);
-            return userAnswer ? userAnswer.answer : null;
-        });
+        const answers = new Array(questions.length).fill(null);
+        let isReviewMode = false;
+        if (isExamMode) {
+            const submittedResult = await pool.query(
+                'SELECT COUNT(DISTINCT question_id) as submitted FROM user_answers WHERE user_id = $1 AND question_id IN (SELECT id FROM questions WHERE module_id = $2)',
+                [userId, moduleId]
+            );
+            isReviewMode = submittedResult.rows[0].submitted >= questions.length;
+            if (isReviewMode) {
+                questions.forEach((q, i) => {
+                    const userAnswer = userAnswers.find(a => a.question_id === q.id);
+                    if (userAnswer) answers[i] = userAnswer.answer;
+                });
+            }
+        } else {
+            questions.forEach((q, i) => {
+                const userAnswer = userAnswers.find(a => a.question_id === q.id);
+                if (userAnswer) answers[i] = userAnswer.answer;
+            });
+        }
 
         let startIndex = 0;
         if (!isExamMode && !isReviewMode) {
-            const lastAnsweredIndex = answers.reduce((max, answer, i) => 
-                answer !== null && answer !== undefined ? i : max, -1);
+            const lastAnsweredIndex = answers.reduce((max, answer, i) => answer !== null ? i : max, -1);
             startIndex = lastAnsweredIndex + 1 < questions.length ? lastAnsweredIndex + 1 : 0;
         }
 
@@ -481,7 +495,7 @@ app.get('/exam/:moduleId', ensureUserAuthenticated, async (req, res) => {
             module,
             startIndex,
             isExamMode,
-            isReviewMode: isExamMode && userAnswers.length >= questions.length,
+            isReviewMode,
             timeLimit: module.time_limit || 2400,
             answers,
             currentSection
@@ -510,8 +524,8 @@ app.post('/exam/:moduleId/save-answer', ensureUserAuthenticated, async (req, res
         }
         res.json({ success: true });
     } catch (err) {
-        console.error('Save error:', err.message);
-        res.status(500).json({ success: false, message: 'Save failed: ' + err.message });
+        console.error('Save answer error:', err.stack);
+        res.status(500).json({ success: false, message: 'Failed to save answer' });
     }
 });
 
