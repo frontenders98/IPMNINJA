@@ -451,7 +451,11 @@ app.get('/exam/:moduleId', ensureUserAuthenticated, async (req, res) => {
         const module = moduleResult.rows[0];
         const isExamMode = module.name.startsWith('Exam Mode');
 
-        const questionResult = await pool.query('SELECT * FROM questions WHERE module_id = $1 ORDER BY id', [moduleId]);
+        // Fetch questions with type-based sorting for consistency
+        const questionResult = await pool.query(
+            'SELECT * FROM questions WHERE module_id = $1 ORDER BY CASE type WHEN \'QA\' THEN 1 WHEN \'MCQ\' THEN 2 WHEN \'VA\' THEN 3 END, id',
+            [moduleId]
+        );
         const questions = questionResult.rows;
         if (questions.length === 0) return res.send('No questions in this module');
 
@@ -477,7 +481,7 @@ app.get('/exam/:moduleId', ensureUserAuthenticated, async (req, res) => {
         } else {
             const lastAnsweredIndex = answers.reduce((max, answer, i) => answer !== null ? i : max, -1);
             startIndex = lastAnsweredIndex + 1 < questions.length ? lastAnsweredIndex + 1 : 0;
-            console.log('Normal mode start:', { startIndex, answers }); // Debug
+            console.log('Normal mode start:', { startIndex, answers, questionIds: questions.map(q => q.id) });
         }
 
         const currentSection = isExamMode && !isReviewMode ? 'QA' : null;
@@ -502,22 +506,26 @@ app.post('/exam/:moduleId/save-answer', ensureUserAuthenticated, async (req, res
     const moduleId = parseInt(req.params.moduleId);
     const { questionId, answer, time_spent } = req.body;
     try {
-        const questionResult = await pool.query('SELECT correct_answer FROM questions WHERE id = $1 AND module_id = $2', [questionId, moduleId]);
+        const questionResult = await pool.query(
+            'SELECT correct_answer, type FROM questions WHERE id = $1 AND module_id = $2',
+            [questionId, moduleId]
+        );
         if (questionResult.rows.length === 0) return res.status(404).json({ success: false, message: 'Question not found' });
-        const correctAnswer = questionResult.rows[0].correct_answer;
+        const { correct_answer, type } = questionResult.rows[0];
 
-        const isCorrect = String(answer).trim() === String(correctAnswer).trim(); // Ensure string comparison
+        const isCorrect = String(answer).trim() === String(correct_answer).trim();
         if (answer !== null && answer !== '') {
             await pool.query(
                 'INSERT INTO user_answers (user_id, question_id, answer, is_correct, time_spent, submitted_at) VALUES ($1, $2, $3, $4, $5, NOW()) ' +
                 'ON CONFLICT (user_id, question_id) DO UPDATE SET answer = $3, is_correct = $4, time_spent = $5, submitted_at = NOW()',
                 [req.session.userId, questionId, answer, isCorrect, time_spent || 0]
             );
+            console.log('Saved:', { userId: req.session.userId, questionId, answer, type });
         }
         res.json({ success: true });
     } catch (err) {
-        console.error('Save answer error:', { err: err.stack, questionId, answer });
-        res.status(500).json({ success: false, message: 'Failed to save answer' });
+        console.error('Save error:', { err: err.stack, questionId, answer });
+        res.status(500).json({ success: false, message: 'Failed to save' });
     }
 });
 
