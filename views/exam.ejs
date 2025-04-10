@@ -495,7 +495,6 @@
         let sectionIndices = isExamMode && !isReviewMode ? { QA: -1, MCQ: -1, VA: -1 } : null;
         let examCompleted = false;
         let questionStartTime = null;
-        // Changed: Calculate resumeIndex based on first unanswered question
         let resumeIndex = answers.findIndex(a => a === null) === -1 ? questions.length : answers.findIndex(a => a === null);
         let sectionStartTime = null;
         
@@ -874,15 +873,20 @@
             MathJax.typesetPromise().catch(err => console.error('MathJax error:', err));
         }
         
+        function canCompleteSection() {
+            return isExamMode && !isReviewMode && timeRemaining <= 0;
+        }
+        
         function nextQuestion() {
             if (isExamMode && !isReviewMode) {
                 const lastQA = sectionIndices.QA === -1 ? -1 : sectionIndices.QA + questions.filter(q => q.type === 'QA').length - 1;
                 const lastMCQ = sectionIndices.MCQ === -1 ? -1 : sectionIndices.MCQ + questions.filter(q => q.type === 'MCQ').length - 1;
-                if (currentQuestionIndex === lastQA && currentSection === 'QA') {
-                    completeSection();
-                    return;
-                } else if (currentQuestionIndex === lastMCQ && currentSection === 'MCQ') {
-                    completeSection();
+                if ((currentQuestionIndex === lastQA && currentSection === 'QA') || (currentQuestionIndex === lastMCQ && currentSection === 'MCQ')) {
+                    if (canCompleteSection()) {
+                        completeSection();
+                    } else {
+                        alert('You must wait until the timer ends to proceed to the next section.');
+                    }
                     return;
                 } else if (currentQuestionIndex < questions.length - 1) {
                     const q = questions[currentQuestionIndex];
@@ -937,7 +941,6 @@
             .then(data => {
                 if (data.success) {
                     answers[currentQuestionIndex] = userAnswer;
-                    // Update resumeIndex after saving
                     resumeIndex = answers.findIndex(a => a === null) === -1 ? questions.length : answers.findIndex(a => a === null);
                     if (currentQuestionIndex < questions.length - 1) {
                         currentQuestionIndex++;
@@ -981,7 +984,6 @@
             if (!isExamMode && !isReviewMode && currentQuestionIndex < questions.length - 1) {
                 if (!answers[currentQuestionIndex]) {
                     skipped[currentQuestionIndex] = true;
-                    // Update resumeIndex after skipping
                     resumeIndex = answers.findIndex(a => a === null) === -1 ? questions.length : answers.findIndex(a => a === null);
                 }
                 currentQuestionIndex++;
@@ -1028,7 +1030,7 @@
                 if (q.type === 'QA') sectionTimeSpent = i === sectionIndices.QA ? timePerSection - timeRemaining : timePerSection / sectionCounts.QA;
                 else if (q.type === 'MCQ') sectionTimeSpent = i === sectionIndices.MCQ ? timePerSection - timeRemaining : timePerSection / sectionCounts.MCQ;
                 else sectionTimeSpent = i === sectionIndices.VA ? timeSpent : timePerSection / sectionCounts.VA;
-                return { questionId: q.id, answer, time_spent: Math.round(sectionTimeSpent) };
+                return { questionId: q.id, answer, time_spent: Math.round(section GothicTimeSpent) };
             });
             console.log('Sending answers to server:', answersWithTime);
         
@@ -1104,13 +1106,11 @@
                             const globalIndex = questions.indexOf(q);
                             const item = document.createElement('div');
                             item.className = 'goto-item';
-                            // Changed: Only unattempted if past resumeIndex and not answered/skipped
                             if (!isReviewMode && globalIndex > resumeIndex && !answers[globalIndex] && !skipped[globalIndex]) {
                                 item.className += ' unattempted';
                             }
                             if (skipped[globalIndex]) item.className += ' skipped';
                             item.innerHTML = `Question ${index + 1}${answers[globalIndex] ? ' ✓' : ''}`;
-                            // Changed: Clickable if answered, skipped, or before resumeIndex
                             if (isReviewMode || answers[globalIndex] || skipped[globalIndex] || globalIndex <= resumeIndex) {
                                 item.onclick = () => {
                                     currentQuestionIndex = globalIndex;
