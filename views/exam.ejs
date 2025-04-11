@@ -251,6 +251,12 @@
         .option-btn.correct .option-text {
             color: #ffffff;
         }
+        .goto-item.disabled {
+            pointer-events: none; /* Keeps it unclickable */
+            opacity: 0.5;         /* Greys it out */
+            background-color: #f0f0f0; /* Light grey background */
+            color: #888;          /* Grey text */
+        }
         .option-btn.wrong {
             background: #ff3333;
             animation: wrongAnimation 0.5s ease;
@@ -1112,10 +1118,9 @@ function updateGoToDropdown() {
                     item.className = 'goto-item';
                     if (skipped[globalIndex]) item.className += ' skipped';
                     if (!isReviewMode && globalIndex > currentQuestionIndex) {
-                        item.className += ' disabled'; // Lock future questions in normal mode
+                        item.className += ' disabled'; // Disable and grey out future questions
                     }
                     item.innerHTML = `Question ${index + 1}${answers[globalIndex] ? ' ✓' : ''}`;
-                    // Only allow navigation up to currentQuestionIndex in normal mode
                     if (isReviewMode || globalIndex <= currentQuestionIndex) {
                         item.onclick = () => {
                             currentQuestionIndex = globalIndex;
@@ -1131,7 +1136,6 @@ function updateGoToDropdown() {
         });
     }
 }
-
 function startTimer() {
     if (!isExamMode || isReviewMode) return;
     document.getElementById('timer').style.display = 'block';
