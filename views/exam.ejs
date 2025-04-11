@@ -1104,22 +1104,17 @@
             const section = document.createElement('div');
             section.className = 'goto-section';
             section.innerHTML = `<h3>${currentSection}</h3>`;
-            questions.forEach((q, globalIndex) => {
-                const index = filteredQuestions.indexOf(q);
+            filteredQuestions.forEach((q, index) => {
+                const globalIndex = questions.indexOf(q);
                 const item = document.createElement('div');
                 item.className = 'goto-item';
-                if (q.type === currentSection) {
-                    if (skipped[globalIndex]) item.className += ' skipped';
-                    item.innerHTML = `Question ${index + 1}${answers[globalIndex] ? ' ✓' : ''}`;
-                    item.onclick = () => {
-                        currentQuestionIndex = globalIndex;
-                        displayExamModeQuestion();
-                        dropdown.style.display = 'none';
-                    };
-                } else {
-                    item.className += ' disabled'; // Out-of-section questions
-                    item.innerHTML = `Question ${globalIndex + 1}${answers[globalIndex] ? ' ✓' : ''}`;
-                }
+                if (skipped[globalIndex]) item.className += ' skipped';
+                item.innerHTML = `Question ${index + 1}${answers[globalIndex] ? ' ✓' : ''}`;
+                item.onclick = () => {
+                    currentQuestionIndex = globalIndex;
+                    displayExamModeQuestion();
+                    dropdown.style.display = 'none';
+                };
                 section.appendChild(item);
             });
             dropdown.appendChild(section);
