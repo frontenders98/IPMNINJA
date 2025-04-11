@@ -435,26 +435,25 @@
         }
         .goto-item {
     background-color: #ffffff; /* White background for accessible items */
-    color: #000000;           /* Black text for sharp, minimalist look */
+    color: #000000;           /* Black text for clickable ones */
     padding: 8px;
     cursor: pointer;
     transition: background-color 0.2s ease; /* Smooth hover */
 }
 
-.goto-item:hover {
+.goto-item:hover:not(.disabled) {
     background-color: #f5f5f5; /* Subtle hover for accessible items */
 }
 
 .goto-item.skipped {
-    background-color: #f0f0f0; /* Light grey for skipped, still clean */
-    color: #000000;            /* Keep black text */
+    background-color: #f0f0f0; /* Light grey for skipped */
+    color: #000000;            /* Black text, sign handles the rest */
 }
 
 .goto-item.disabled {
     pointer-events: none;      /* Unclickable */
     background-color: #666666; /* Dark grey background */
-    color: #bbbbbb;            /* Light grey text, readable but muted */
-    opacity: 0.9;              /* Almost full opacity, just a touch softer */
+    color: #888888;            /* Grey text for inaccessible ones */
 }
     </style>
 </head>
@@ -717,6 +716,7 @@
             document.getElementById('feedback').style.display = 'none';
             document.getElementById('answer-explanation').style.display = 'none';
         
+            // Lock "Next" button on last question of section if time remains
             const lastQA = sectionIndices.QA + questions.filter(q => q.type === 'QA').length - 1;
             const lastMCQ = sectionIndices.MCQ + questions.filter(q => q.type === 'MCQ').length - 1;
             const lastVA = sectionIndices.VA + questions.filter(q => q.type === 'VA').length - 1;
@@ -1013,9 +1013,7 @@
         
         function skipQuestion() {
             if (!isExamMode && !isReviewMode && currentQuestionIndex < questions.length - 1) {
-                if (!answers[currentQuestionIndex]) {
-                    skipped[currentQuestionIndex] = true;
-                }
+                if (!answers[currentQuestionIndex]) skipped[currentQuestionIndex] = true;
                 currentQuestionIndex++;
                 displayQuestion();
                 updateGoToDropdown();
@@ -1134,18 +1132,13 @@
                             const item = document.createElement('div');
                             item.className = 'goto-item';
                             if (skipped[globalIndex]) item.className += ' skipped';
-                            if (!isReviewMode && globalIndex > currentQuestionIndex) {
-                                item.className += ' disabled'; // Disable and darken future questions
-                            }
                             item.innerHTML = `Question ${index + 1}${answers[globalIndex] ? ' ✓' : ''}`;
-                            if (isReviewMode || globalIndex <= currentQuestionIndex) {
-                                item.onclick = () => {
-                                    currentQuestionIndex = globalIndex;
-                                    if (isReviewMode) displayReviewModeQuestion();
-                                    else displayNormalModeQuestion();
-                                    dropdown.style.display = 'none';
-                                };
-                            }
+                            item.onclick = () => {
+                                currentQuestionIndex = globalIndex;
+                                if (isReviewMode) displayReviewModeQuestion();
+                                else displayNormalModeQuestion();
+                                dropdown.style.display = 'none';
+                            };
                             section.appendChild(item);
                         });
                         dropdown.appendChild(section);
@@ -1275,5 +1268,5 @@
             }, 10 * 60 * 1000);
         }
         </script>
-        </body>
+</body>
 </html>
