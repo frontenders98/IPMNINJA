@@ -434,26 +434,26 @@
             .feedback-btn { width: 100%; max-width: 300px; }
         }
         .goto-item {
-    background-color: #ffffff; /* White background for accessible items */
-    color: #000000;           /* Black text for clickable ones */
+    background-color: #151515; /* Matches dropdown background */
+    color: #000000;           /* Black text for accessible items */
     padding: 8px;
     cursor: pointer;
     transition: background-color 0.2s ease; /* Smooth hover */
 }
 
 .goto-item:hover:not(.disabled) {
-    background-color: #f5f5f5; /* Subtle hover for accessible items */
+    background-color: #222222; /* Subtle hover, stays dark */
 }
 
 .goto-item.skipped {
-    background-color: #f0f0f0; /* Light grey for skipped */
-    color: #000000;            /* Black text, sign handles the rest */
+    background-color: #151515; /* Same dark base */
+    color: #cccccc;            /* Light grey text for skipped */
 }
 
 .goto-item.disabled {
     pointer-events: none;      /* Unclickable */
-    background-color: #666666; /* Dark grey background */
-    color: #888888;            /* Grey text for inaccessible ones */
+    background-color: #151515; /* Same dark base */
+    color: #888888;            /* Grey text for inaccessible */
 }
     </style>
 </head>
