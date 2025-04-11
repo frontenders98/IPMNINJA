@@ -481,7 +481,7 @@
             <button class="next-btn" id="next-btn" onclick="nextQuestion()" style="display: none;">Next</button>
         <% } %>
     </div>
-    <script>
+<script>
 let questions = <%- JSON.stringify(questions) %>; // Server order: QA, MCQ, VA, then id
 let currentQuestionIndex = <%- JSON.stringify(startIndex) %>;
 let answers = <%- JSON.stringify(answers) %>;
