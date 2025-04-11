@@ -482,769 +482,776 @@
         <% } %>
     </div>
     <script>
-        let questions = <%- JSON.stringify(questions) %>; // Server order: QA, MCQ, VA, then id
-        let currentQuestionIndex = <%- JSON.stringify(startIndex) %>;
-        let answers = <%- JSON.stringify(answers) %>;
-        const isExamMode = <%- JSON.stringify(isExamMode) %>;
-        const isReviewMode = <%- JSON.stringify(isReviewMode) %>;
-        const timeLimit = <%- JSON.stringify(timeLimit) %>;
-        let skipped = new Array(questions.length).fill(false);
-        let timerInterval = null;
-        let timeRemaining = timeLimit;
-        let currentSection = <%- JSON.stringify(currentSection) %>;
-        let sectionIndices = { QA: -1, MCQ: -1, VA: -1 };
-        let examCompleted = false;
-        let questionStartTime = null;
-        let sectionStartTime = null;
-        
-        // Set section indices and adjust on re-entry
-        if (isExamMode && !isReviewMode) {
-            sectionIndices.QA = questions.findIndex(q => q.type === 'QA');
-            sectionIndices.MCQ = questions.findIndex(q => q.type === 'MCQ');
-            sectionIndices.VA = questions.findIndex(q => q.type === 'VA');
-        
-            // On re-entry, set currentSection based on last answered question
-            if (currentQuestionIndex > 0 && !examCompleted) {
-                const lastAnsweredIdx = answers.findLastIndex(a => a !== null);
-                if (lastAnsweredIdx >= sectionIndices.VA && sectionIndices.VA !== -1) {
-                    currentSection = 'VA';
-                    currentQuestionIndex = lastAnsweredIdx + 1 >= questions.length ? sectionIndices.VA : lastAnsweredIdx + 1;
-                } else if (lastAnsweredIdx >= sectionIndices.MCQ && sectionIndices.MCQ !== -1) {
-                    currentSection = 'MCQ';
-                    currentQuestionIndex = lastAnsweredIdx + 1 >= sectionIndices.VA ? sectionIndices.MCQ : lastAnsweredIdx + 1;
-                } else {
-                    currentSection = 'QA';
-                    currentQuestionIndex = lastAnsweredIdx + 1 >= sectionIndices.MCQ ? sectionIndices.QA : lastAnsweredIdx + 1;
-                }
-                timeRemaining = <%- JSON.stringify(module.time_limit || 2400) %> - (Date.now() - sectionStartTime) / 1000 || timeLimit;
-            }
+let questions = <%- JSON.stringify(questions) %>; // Server order: QA, MCQ, VA, then id
+let currentQuestionIndex = <%- JSON.stringify(startIndex) %>;
+let answers = <%- JSON.stringify(answers) %>;
+const isExamMode = <%- JSON.stringify(isExamMode) %>;
+const isReviewMode = <%- JSON.stringify(isReviewMode) %>;
+const timeLimit = <%- JSON.stringify(timeLimit) %>;
+let skipped = new Array(questions.length).fill(false);
+let timerInterval = null;
+let timeRemaining = timeLimit;
+let currentSection = <%- JSON.stringify(currentSection) %>;
+let sectionIndices = { QA: -1, MCQ: -1, VA: -1 };
+let examCompleted = false;
+let questionStartTime = null;
+let sectionStartTime = null;
+
+// Set section indices and adjust on re-entry
+if (isExamMode && !isReviewMode) {
+    sectionIndices.QA = questions.findIndex(q => q.type === 'QA');
+    sectionIndices.MCQ = questions.findIndex(q => q.type === 'MCQ');
+    sectionIndices.VA = questions.findIndex(q => q.type === 'VA');
+
+    // On re-entry, set currentSection based on last answered question
+    if (currentQuestionIndex > 0 && !examCompleted) {
+        const lastAnsweredIdx = answers.findLastIndex(a => a !== null);
+        if (lastAnsweredIdx >= sectionIndices.VA && sectionIndices.VA !== -1) {
+            currentSection = 'VA';
+            currentQuestionIndex = lastAnsweredIdx + 1 >= questions.length ? sectionIndices.VA : lastAnsweredIdx + 1;
+        } else if (lastAnsweredIdx >= sectionIndices.MCQ && sectionIndices.MCQ !== -1) {
+            currentSection = 'MCQ';
+            currentQuestionIndex = lastAnsweredIdx + 1 >= sectionIndices.VA ? sectionIndices.MCQ : lastAnsweredIdx + 1;
+        } else {
+            currentSection = 'QA';
+            currentQuestionIndex = lastAnsweredIdx + 1 >= sectionIndices.MCQ ? sectionIndices.QA : lastAnsweredIdx + 1;
         }
-        
-        function disableBackNavigation() {
-            if (!isExamMode || isReviewMode) return;
-            history.pushState(null, null, window.location.href);
-            window.onpopstate = () => history.go(1);
-            document.getElementById('back-btn').classList.add('disabled');
-        }
-        
-        function enableBackNavigation() {
-            window.onpopstate = null;
-            document.getElementById('back-btn').classList.remove('disabled');
-        }
-        
-        function displayQuestion() {
-            questionStartTime = Date.now();
-            if (isExamMode && !isReviewMode) displayExamModeQuestion();
-            else if (isReviewMode) displayReviewModeQuestion();
-            else displayNormalModeQuestion();
-            updateNavigationButtons();
-        }
-        
-        function displayNormalModeQuestion() {
-            if (currentQuestionIndex >= questions.length) {
-                document.getElementById('question-text').innerHTML = 'Practice Complete!';
-                document.getElementById('question-text').style.display = 'block';
-                document.getElementById('va-question-box').style.display = 'none';
-                document.getElementById('options').innerHTML = '';
-                document.getElementById('qa-input-container').style.display = 'none';
-                document.getElementById('feedback').style.display = 'none';
-                document.getElementById('answer-explanation').style.display = 'none';
-                document.getElementById('goto-dropdown').style.display = 'none';
-                document.getElementById('next-btn').style.display = 'none';
-                return;
-            }
-        
-            const q = questions[currentQuestionIndex];
-            const questionText = document.getElementById('question-text');
-            const vaQuestionBox = document.getElementById('va-question-box');
-            const optionsDiv = document.getElementById('options');
-            const qaInputContainer = document.getElementById('qa-input-container');
-            const nextBtn = document.getElementById('next-btn');
-            optionsDiv.innerHTML = '';
-        
-            if (q.type === 'VA' || q.type === 'MCQ') {
-                questionText.style.display = q.type === 'MCQ' ? 'block' : 'none';
-                vaQuestionBox.style.display = q.type === 'VA' ? 'block' : 'none';
-                questionText.innerHTML = q.question;
-                vaQuestionBox.innerHTML = q.question;
-                optionsDiv.style.display = 'flex';
-                qaInputContainer.style.display = 'none';
-                nextBtn.style.display = 'none';
-        
-                const options = [
-                    { letter: 'A', value: q.option_a },
-                    { letter: 'B', value: q.option_b },
-                    { letter: 'C', value: q.option_c },
-                    { letter: 'D', value: q.option_d }
-                ];
-                if (q.option_e) options.push({ letter: 'E', value: q.option_e });
-        
-                const row1 = document.createElement('div');
-                row1.className = 'option-row';
-                const row2 = document.createElement('div');
-                row2.className = 'option-row';
-                const row3 = document.createElement('div');
-                row3.className = 'option-row';
-        
-                options.forEach((opt, index) => {
-                    const btn = document.createElement('button');
-                    btn.className = 'option-btn';
-                    btn.innerHTML = `<span class="option-letter">${opt.letter}</span><span class="option-text">${opt.value}</span>`;
-                    if (answers[currentQuestionIndex]) {
-                        btn.disabled = true;
-                        btn.classList.add('disabled');
-                        if (opt.letter === q.correct_answer) btn.classList.add('correct');
-                        if (opt.letter === answers[currentQuestionIndex] && opt.letter !== q.correct_answer) btn.classList.add('wrong');
-                    } else {
-                        btn.onclick = () => checkAnswer(opt.letter, q.correct_answer, q.explanation, opt.value);
-                    }
-                    if (index < 2) row1.appendChild(btn);
-                    else if (index < 4) row2.appendChild(btn);
-                    else row3.appendChild(btn);
-                });
-        
-                optionsDiv.appendChild(row1);
-                if (row2.children.length) optionsDiv.appendChild(row2);
-                if (row3.children.length) optionsDiv.appendChild(row3);
-            } else if (q.type === 'QA') {
-                questionText.style.display = 'block';
-                vaQuestionBox.style.display = 'none';
-                questionText.innerHTML = q.question;
-                optionsDiv.style.display = 'none';
-                qaInputContainer.style.display = 'flex';
-                nextBtn.style.display = 'none';
-                document.getElementById('qa-input').value = answers[currentQuestionIndex] || '';
-                document.getElementById('qa-input').disabled = !!answers[currentQuestionIndex];
-                document.getElementById('qa-submit-btn').disabled = !!answers[currentQuestionIndex];
-            }
-        
-            document.getElementById('feedback').style.display = answers[currentQuestionIndex] ? 'flex' : 'none';
-            document.getElementById('answer-explanation').style.display = answers[currentQuestionIndex] ? 'block' : 'none';
-            if (answers[currentQuestionIndex]) updateFeedbackAndExplanation();
-        
-            MathJax.typesetPromise().catch(err => console.error('MathJax error:', err));
-        }
-        
-        function displayExamModeQuestion() {
-            if (currentQuestionIndex >= questions.length) {
-                examCompleted = true;
-                completeExam();
-                return;
-            }
-        
-            const q = questions[currentQuestionIndex];
-            const questionText = document.getElementById('question-text');
-            const vaQuestionBox = document.getElementById('va-question-box');
-            const optionsDiv = document.getElementById('options');
-            const qaInputContainer = document.getElementById('qa-input-container');
-            const nextBtn = document.getElementById('next-btn');
-            optionsDiv.innerHTML = '';
-        
-            if (q.type === 'VA' || q.type === 'MCQ') {
-                questionText.style.display = q.type === 'MCQ' ? 'block' : 'none';
-                vaQuestionBox.style.display = q.type === 'VA' ? 'block' : 'none';
-                questionText.innerHTML = q.question;
-                vaQuestionBox.innerHTML = q.question;
-                optionsDiv.style.display = 'flex';
-                qaInputContainer.style.display = 'none';
-                nextBtn.style.display = 'block';
-        
-                const options = [
-                    { letter: 'A', value: q.option_a },
-                    { letter: 'B', value: q.option_b },
-                    { letter: 'C', value: q.option_c },
-                    { letter: 'D', value: q.option_d }
-                ];
-                if (q.option_e) options.push({ letter: 'E', value: q.option_e });
-        
-                const row1 = document.createElement('div');
-                row1.className = 'option-row';
-                const row2 = document.createElement('div');
-                row2.className = 'option-row';
-                const row3 = document.createElement('div');
-                row3.className = 'option-row';
-        
-                options.forEach((opt, index) => {
-                    const btn = document.createElement('button');
-                    btn.className = 'option-btn';
-                    btn.innerHTML = `<span class="option-letter">${opt.letter}</span><span class="option-text">${opt.value}</span>`;
-                    if (answers[currentQuestionIndex] === opt.letter) btn.classList.add('selected');
-                    btn.onclick = () => selectAnswer(opt.letter);
-                    if (index < 2) row1.appendChild(btn);
-                    else if (index < 4) row2.appendChild(btn);
-                    else row3.appendChild(btn);
-                });
-        
-                optionsDiv.appendChild(row1);
-                if (row2.children.length) optionsDiv.appendChild(row2);
-                if (row3.children.length) optionsDiv.appendChild(row3);
-            } else if (q.type === 'QA') {
-                questionText.style.display = 'block';
-                vaQuestionBox.style.display = 'none';
-                questionText.innerHTML = q.question;
-                optionsDiv.style.display = 'none';
-                qaInputContainer.style.display = 'flex';
-                nextBtn.style.display = 'block';
-                document.getElementById('qa-input').value = answers[currentQuestionIndex] || '';
-                document.getElementById('qa-input').oninput = (e) => answers[currentQuestionIndex] = e.target.value.trim();
-                document.getElementById('qa-input').disabled = false;
-                document.getElementById('qa-submit-btn').style.display = 'none';
-            }
-        
-            document.getElementById('feedback').style.display = 'none';
-            document.getElementById('answer-explanation').style.display = 'none';
-        
-            // Lock "Next" button on last question of section if time remains
-            const lastQA = sectionIndices.QA + questions.filter(q => q.type === 'QA').length - 1;
-            const lastMCQ = sectionIndices.MCQ + questions.filter(q => q.type === 'MCQ').length - 1;
-            const lastVA = sectionIndices.VA + questions.filter(q => q.type === 'VA').length - 1;
-            nextBtn.disabled = ((currentQuestionIndex === lastQA && currentSection === 'QA') ||
-                               (currentQuestionIndex === lastMCQ && currentSection === 'MCQ') ||
-                               (currentQuestionIndex === lastVA && currentSection === 'VA')) && timeRemaining > 0;
-        
-            MathJax.typesetPromise().catch(err => console.error('MathJax error:', err));
-        }
-        
-        function displayReviewModeQuestion() {
-            if (currentQuestionIndex >= questions.length) {
-                window.location.href = '/index';
-                return;
-            }
-        
-            const q = questions[currentQuestionIndex];
-            const questionText = document.getElementById('question-text');
-            const vaQuestionBox = document.getElementById('va-question-box');
-            const optionsDiv = document.getElementById('options');
-            const qaInputContainer = document.getElementById('qa-input-container');
-            optionsDiv.innerHTML = '';
-        
-            if (q.type === 'VA' || q.type === 'MCQ') {
-                questionText.style.display = q.type === 'MCQ' ? 'block' : 'none';
-                vaQuestionBox.style.display = q.type === 'VA' ? 'block' : 'none';
-                questionText.innerHTML = q.question;
-                vaQuestionBox.innerHTML = q.question;
-                optionsDiv.style.display = 'flex';
-                qaInputContainer.style.display = 'none';
-        
-                const options = [
-                    { letter: 'A', value: q.option_a },
-                    { letter: 'B', value: q.option_b },
-                    { letter: 'C', value: q.option_c },
-                    { letter: 'D', value: q.option_d }
-                ];
-                if (q.option_e) options.push({ letter: 'E', value: q.option_e });
-        
-                const row1 = document.createElement('div');
-                row1.className = 'option-row';
-                const row2 = document.createElement('div');
-                row2.className = 'option-row';
-                const row3 = document.createElement('div');
-                row3.className = 'option-row';
-        
-                options.forEach((opt, index) => {
-                    const btn = document.createElement('button');
-                    btn.className = 'option-btn disabled';
-                    btn.innerHTML = `<span class="option-letter">${opt.letter}</span><span class="option-text">${opt.value}</span>`;
-                    const isUserAnswer = answers[currentQuestionIndex] === opt.letter;
-                    const isCorrectAnswer = opt.letter === q.correct_answer;
-                    if (isCorrectAnswer) btn.classList.add('correct');
-                    else if (isUserAnswer && !isCorrectAnswer) btn.classList.add('wrong');
-                    if (index < 2) row1.appendChild(btn);
-                    else if (index < 4) row2.appendChild(btn);
-                    else row3.appendChild(btn);
-                });
-        
-                optionsDiv.appendChild(row1);
-                if (row2.children.length) optionsDiv.appendChild(row2);
-                if (row3.children.length) optionsDiv.appendChild(row3);
-            } else if (q.type === 'QA') {
-                questionText.style.display = 'block';
-                vaQuestionBox.style.display = 'none';
-                questionText.innerHTML = q.question;
-                optionsDiv.style.display = 'none';
-                qaInputContainer.style.display = 'flex';
-                document.getElementById('qa-input').value = answers[currentQuestionIndex] || '';
-                document.getElementById('qa-input').disabled = true;
-                document.getElementById('qa-submit-btn').style.display = 'none';
-            }
-        
-            document.getElementById('feedback').style.display = 'flex';
-            document.getElementById('answer-explanation').style.display = 'block';
-            updateFeedbackAndExplanation();
-        
-            MathJax.typesetPromise().catch(err => console.error('MathJax error:', err));
-        }
-        
-        function checkAnswer(selected, correct, explanation, selectedValue) {
-            const q = questions[currentQuestionIndex];
-            const buttons = document.querySelectorAll('.option-btn');
-            buttons.forEach(btn => {
+        timeRemaining = <%- JSON.stringify(module.time_limit || 2400) %> - (Date.now() - sectionStartTime) / 1000 || timeLimit;
+    }
+}
+
+function disableBackNavigation() {
+    if (!isExamMode || isReviewMode) return;
+    history.pushState(null, null, window.location.href);
+    window.onpopstate = () => history.go(1);
+    document.getElementById('back-btn').classList.add('disabled');
+}
+
+function enableBackNavigation() {
+    window.onpopstate = null;
+    document.getElementById('back-btn').classList.remove('disabled');
+}
+
+function displayQuestion() {
+    questionStartTime = Date.now();
+    if (isExamMode && !isReviewMode) displayExamModeQuestion();
+    else if (isReviewMode) displayReviewModeQuestion();
+    else displayNormalModeQuestion();
+    updateNavigationButtons();
+}
+
+function displayNormalModeQuestion() {
+    if (currentQuestionIndex >= questions.length) {
+        document.getElementById('question-text').innerHTML = 'Practice Complete!';
+        document.getElementById('question-text').style.display = 'block';
+        document.getElementById('va-question-box').style.display = 'none';
+        document.getElementById('options').innerHTML = '';
+        document.getElementById('qa-input-container').style.display = 'none';
+        document.getElementById('feedback').style.display = 'none';
+        document.getElementById('answer-explanation').style.display = 'none';
+        document.getElementById('goto-dropdown').style.display = 'none';
+        document.getElementById('next-btn').style.display = 'none';
+        return;
+    }
+
+    const q = questions[currentQuestionIndex];
+    const questionText = document.getElementById('question-text');
+    const vaQuestionBox = document.getElementById('va-question-box');
+    const optionsDiv = document.getElementById('options');
+    const qaInputContainer = document.getElementById('qa-input-container');
+    const nextBtn = document.getElementById('next-btn');
+    optionsDiv.innerHTML = '';
+
+    if (q.type === 'VA' || q.type === 'MCQ') {
+        questionText.style.display = q.type === 'MCQ' ? 'block' : 'none';
+        vaQuestionBox.style.display = q.type === 'VA' ? 'block' : 'none';
+        questionText.innerHTML = q.question;
+        vaQuestionBox.innerHTML = q.question;
+        optionsDiv.style.display = 'flex';
+        qaInputContainer.style.display = 'none';
+        nextBtn.style.display = 'none';
+
+        const options = [
+            { letter: 'A', value: q.option_a },
+            { letter: 'B', value: q.option_b },
+            { letter: 'C', value: q.option_c },
+            { letter: 'D', value: q.option_d }
+        ];
+        if (q.option_e) options.push({ letter: 'E', value: q.option_e });
+
+        const row1 = document.createElement('div');
+        row1.className = 'option-row';
+        const row2 = document.createElement('div');
+        row2.className = 'option-row';
+        const row3 = document.createElement('div');
+        row3.className = 'option-row';
+
+        options.forEach((opt, index) => {
+            const btn = document.createElement('button');
+            btn.className = 'option-btn';
+            btn.innerHTML = `<span class="option-letter">${opt.letter}</span><span class="option-text">${opt.value}</span>`;
+            if (answers[currentQuestionIndex]) {
                 btn.disabled = true;
                 btn.classList.add('disabled');
-                if (btn.querySelector('.option-letter').textContent === correct) btn.classList.add('correct');
-            });
-        
-            answers[currentQuestionIndex] = selected;
-            skipped[currentQuestionIndex] = false;
-            const feedback = document.getElementById('feedback');
-            const feedbackText = document.getElementById('feedback-text');
-        
-            if (selected === correct) {
-                buttons.forEach(btn => {
-                    if (btn.querySelector('.option-letter').textContent === selected) btn.classList.add('correct');
-                });
-                feedbackText.innerHTML = 'Correct!';
-                feedback.classList.remove('wrong');
-                feedback.classList.add('correct');
+                if (opt.letter === q.correct_answer) btn.classList.add('correct');
+                if (opt.letter === answers[currentQuestionIndex] && opt.letter !== q.correct_answer) btn.classList.add('wrong');
             } else {
-                buttons.forEach(btn => {
-                    if (btn.querySelector('.option-letter').textContent === selected) btn.classList.add('wrong');
-                });
-                feedbackText.innerHTML = 'Wrong!';
-                feedback.classList.remove('correct');
-                feedback.classList.add('wrong');
+                btn.onclick = () => checkAnswer(opt.letter, q.correct_answer, q.explanation, opt.value);
             }
-        
-            feedback.style.display = 'flex';
-            updateFeedbackAndExplanation();
-        
-            const timeSpent = Math.floor((Date.now() - questionStartTime) / 1000);
-            fetch(`/exam/${<%- JSON.stringify(module.id) %>}/save-answer`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ questionId: q.id, answer: selected, time_spent: timeSpent })
-            }).then(response => response.json()).then(data => {
-                if (!data.success) console.error('Failed to save answer:', data.message);
-            }).catch(err => console.error('Save error:', err));
-        
-            updateGoToDropdown();
-        }
-        
-        function selectAnswer(selected) {
-            answers[currentQuestionIndex] = selected;
-            const buttons = document.querySelectorAll('.option-btn');
-            buttons.forEach(btn => {
-                btn.classList.remove('selected');
-                if (btn.querySelector('.option-letter').textContent === selected) btn.classList.add('selected');
-            });
-            updateGoToDropdown();
-        }
-        
-        function submitQAAnswer() {
+            if (index < 2) row1.appendChild(btn);
+            else if (index < 4) row2.appendChild(btn);
+            else row3.appendChild(btn);
+        });
+
+        optionsDiv.appendChild(row1);
+        if (row2.children.length) optionsDiv.appendChild(row2);
+        if (row3.children.length) optionsDiv.appendChild(row3);
+    } else if (q.type === 'QA') {
+        questionText.style.display = 'block';
+        vaQuestionBox.style.display = 'none';
+        questionText.innerHTML = q.question;
+        optionsDiv.style.display = 'none';
+        qaInputContainer.style.display = 'flex';
+        nextBtn.style.display = 'none';
+        document.getElementById('qa-input').value = answers[currentQuestionIndex] || '';
+        document.getElementById('qa-input').disabled = !!answers[currentQuestionIndex];
+        document.getElementById('qa-submit-btn').disabled = !!answers[currentQuestionIndex];
+    }
+
+    document.getElementById('feedback').style.display = answers[currentQuestionIndex] ? 'flex' : 'none';
+    document.getElementById('answer-explanation').style.display = answers[currentQuestionIndex] ? 'block' : 'none';
+    if (answers[currentQuestionIndex]) updateFeedbackAndExplanation();
+
+    MathJax.typesetPromise().catch(err => console.error('MathJax error:', err));
+}
+
+function displayExamModeQuestion() {
+    if (currentQuestionIndex >= questions.length) {
+        examCompleted = true;
+        completeExam();
+        return;
+    }
+
+    const q = questions[currentQuestionIndex];
+    const questionText = document.getElementById('question-text');
+    const vaQuestionBox = document.getElementById('va-question-box');
+    const optionsDiv = document.getElementById('options');
+    const qaInputContainer = document.getElementById('qa-input-container');
+    const nextBtn = document.getElementById('next-btn');
+    optionsDiv.innerHTML = '';
+
+    if (q.type === 'VA' || q.type === 'MCQ') {
+        questionText.style.display = q.type === 'MCQ' ? 'block' : 'none';
+        vaQuestionBox.style.display = q.type === 'VA' ? 'block' : 'none';
+        questionText.innerHTML = q.question;
+        vaQuestionBox.innerHTML = q.question;
+        optionsDiv.style.display = 'flex';
+        qaInputContainer.style.display = 'none';
+        nextBtn.style.display = 'block';
+
+        const options = [
+            { letter: 'A', value: q.option_a },
+            { letter: 'B', value: q.option_b },
+            { letter: 'C', value: q.option_c },
+            { letter: 'D', value: q.option_d }
+        ];
+        if (q.option_e) options.push({ letter: 'E', value: q.option_e });
+
+        const row1 = document.createElement('div');
+        row1.className = 'option-row';
+        const row2 = document.createElement('div');
+        row2.className = 'option-row';
+        const row3 = document.createElement('div');
+        row3.className = 'option-row';
+
+        options.forEach((opt, index) => {
+            const btn = document.createElement('button');
+            btn.className = 'option-btn';
+            btn.innerHTML = `<span class="option-letter">${opt.letter}</span><span class="option-text">${opt.value}</span>`;
+            if (answers[currentQuestionIndex] === opt.letter) btn.classList.add('selected');
+            btn.onclick = () => selectAnswer(opt.letter);
+            if (index < 2) row1.appendChild(btn);
+            else if (index < 4) row2.appendChild(btn);
+            else row3.appendChild(btn);
+        });
+
+        optionsDiv.appendChild(row1);
+        if (row2.children.length) optionsDiv.appendChild(row2);
+        if (row3.children.length) optionsDiv.appendChild(row3);
+    } else if (q.type === 'QA') {
+        questionText.style.display = 'block';
+        vaQuestionBox.style.display = 'none';
+        questionText.innerHTML = q.question;
+        optionsDiv.style.display = 'none';
+        qaInputContainer.style.display = 'flex';
+        nextBtn.style.display = 'block';
+        document.getElementById('qa-input').value = answers[currentQuestionIndex] || '';
+        document.getElementById('qa-input').oninput = (e) => answers[currentQuestionIndex] = e.target.value.trim();
+        document.getElementById('qa-input').disabled = false;
+        document.getElementById('qa-submit-btn').style.display = 'none';
+    }
+
+    document.getElementById('feedback').style.display = 'none';
+    document.getElementById('answer-explanation').style.display = 'none';
+
+    const lastQA = sectionIndices.QA + questions.filter(q => q.type === 'QA').length - 1;
+    const lastMCQ = sectionIndices.MCQ + questions.filter(q => q.type === 'MCQ').length - 1;
+    const lastVA = sectionIndices.VA + questions.filter(q => q.type === 'VA').length - 1;
+    nextBtn.disabled = ((currentQuestionIndex === lastQA && currentSection === 'QA') ||
+                       (currentQuestionIndex === lastMCQ && currentSection === 'MCQ') ||
+                       (currentQuestionIndex === lastVA && currentSection === 'VA')) && timeRemaining > 0;
+
+    MathJax.typesetPromise().catch(err => console.error('MathJax error:', err));
+}
+
+function displayReviewModeQuestion() {
+    if (currentQuestionIndex >= questions.length) {
+        window.location.href = '/index';
+        return;
+    }
+
+    const q = questions[currentQuestionIndex];
+    const questionText = document.getElementById('question-text');
+    const vaQuestionBox = document.getElementById('va-question-box');
+    const optionsDiv = document.getElementById('options');
+    const qaInputContainer = document.getElementById('qa-input-container');
+    optionsDiv.innerHTML = '';
+
+    if (q.type === 'VA' || q.type === 'MCQ') {
+        questionText.style.display = q.type === 'MCQ' ? 'block' : 'none';
+        vaQuestionBox.style.display = q.type === 'VA' ? 'block' : 'none';
+        questionText.innerHTML = q.question;
+        vaQuestionBox.innerHTML = q.question;
+        optionsDiv.style.display = 'flex';
+        qaInputContainer.style.display = 'none';
+
+        const options = [
+            { letter: 'A', value: q.option_a },
+            { letter: 'B', value: q.option_b },
+            { letter: 'C', value: q.option_c },
+            { letter: 'D', value: q.option_d }
+        ];
+        if (q.option_e) options.push({ letter: 'E', value: q.option_e });
+
+        const row1 = document.createElement('div');
+        row1.className = 'option-row';
+        const row2 = document.createElement('div');
+        row2.className = 'option-row';
+        const row3 = document.createElement('div');
+        row3.className = 'option-row';
+
+        options.forEach((opt, index) => {
+            const btn = document.createElement('button');
+            btn.className = 'option-btn disabled';
+            btn.innerHTML = `<span class="option-letter">${opt.letter}</span><span class="option-text">${opt.value}</span>`;
+            const isUserAnswer = answers[currentQuestionIndex] === opt.letter;
+            const isCorrectAnswer = opt.letter === q.correct_answer;
+            if (isCorrectAnswer) btn.classList.add('correct');
+            else if (isUserAnswer && !isCorrectAnswer) btn.classList.add('wrong');
+            if (index < 2) row1.appendChild(btn);
+            else if (index < 4) row2.appendChild(btn);
+            else row3.appendChild(btn);
+        });
+
+        optionsDiv.appendChild(row1);
+        if (row2.children.length) optionsDiv.appendChild(row2);
+        if (row3.children.length) optionsDiv.appendChild(row3);
+    } else if (q.type === 'QA') {
+        questionText.style.display = 'block';
+        vaQuestionBox.style.display = 'none';
+        questionText.innerHTML = q.question;
+        optionsDiv.style.display = 'none';
+        qaInputContainer.style.display = 'flex';
+        document.getElementById('qa-input').value = answers[currentQuestionIndex] || '';
+        document.getElementById('qa-input').disabled = true;
+        document.getElementById('qa-submit-btn').style.display = 'none';
+    }
+
+    document.getElementById('feedback').style.display = 'flex';
+    document.getElementById('answer-explanation').style.display = 'block';
+    updateFeedbackAndExplanation();
+
+    MathJax.typesetPromise().catch(err => console.error('MathJax error:', err));
+}
+
+function checkAnswer(selected, correct, explanation, selectedValue) {
+    const q = questions[currentQuestionIndex];
+    const buttons = document.querySelectorAll('.option-btn');
+    buttons.forEach(btn => {
+        btn.disabled = true;
+        btn.classList.add('disabled');
+        if (btn.querySelector('.option-letter').textContent === correct) btn.classList.add('correct');
+    });
+
+    answers[currentQuestionIndex] = selected;
+    skipped[currentQuestionIndex] = false;
+    const feedback = document.getElementById('feedback');
+    const feedbackText = document.getElementById('feedback-text');
+
+    if (selected === correct) {
+        buttons.forEach(btn => {
+            if (btn.querySelector('.option-letter').textContent === selected) btn.classList.add('correct');
+        });
+        feedbackText.innerHTML = 'Correct!';
+        feedback.classList.remove('wrong');
+        feedback.classList.add('correct');
+    } else {
+        buttons.forEach(btn => {
+            if (btn.querySelector('.option-letter').textContent === selected) btn.classList.add('wrong');
+        });
+        feedbackText.innerHTML = 'Wrong!';
+        feedback.classList.remove('correct');
+        feedback.classList.add('wrong');
+    }
+
+    feedback.style.display = 'flex';
+    updateFeedbackAndExplanation();
+
+    const timeSpent = Math.floor((Date.now() - questionStartTime) / 1000);
+    fetch(`/exam/${<%- JSON.stringify(module.id) %>}/save-answer`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ questionId: q.id, answer: selected, time_spent: timeSpent })
+    }).then(response => response.json()).then(data => {
+        if (!data.success) console.error('Failed to save answer:', data.message);
+    }).catch(err => console.error('Save error:', err));
+
+    updateGoToDropdown();
+}
+
+function selectAnswer(selected) {
+    answers[currentQuestionIndex] = selected;
+    const buttons = document.querySelectorAll('.option-btn');
+    buttons.forEach(btn => {
+        btn.classList.remove('selected');
+        if (btn.querySelector('.option-letter').textContent === selected) btn.classList.add('selected');
+    });
+    updateGoToDropdown();
+}
+
+function submitQAAnswer() {
+    const q = questions[currentQuestionIndex];
+    const userAnswer = document.getElementById('qa-input').value.trim();
+    const correctAnswer = q.correct_answer.trim();
+
+    answers[currentQuestionIndex] = userAnswer;
+    skipped[currentQuestionIndex] = false;
+    const feedback = document.getElementById('feedback');
+    const feedbackText = document.getElementById('feedback-text');
+
+    document.getElementById('qa-input').disabled = true;
+    document.getElementById('qa-submit-btn').disabled = true;
+
+    if (userAnswer === correctAnswer) {
+        feedbackText.innerHTML = 'Correct!';
+        feedback.classList.remove('wrong');
+        feedback.classList.add('correct');
+    } else {
+        feedbackText.innerHTML = 'Wrong!';
+        feedback.classList.remove('correct');
+        feedback.classList.add('wrong');
+    }
+
+    feedback.style.display = 'flex';
+    updateFeedbackAndExplanation();
+
+    const timeSpent = Math.floor((Date.now() - questionStartTime) / 1000);
+    fetch(`/exam/${<%- JSON.stringify(module.id) %>}/save-answer`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ questionId: q.id, answer: userAnswer, time_spent: timeSpent })
+    }).then(response => response.json()).then(data => {
+        if (!data.success) console.error('Failed to save answer:', data.message);
+    }).catch(err => console.error('Save error:', err));
+
+    updateGoToDropdown();
+}
+
+function updateFeedbackAndExplanation() {
+    const q = questions[currentQuestionIndex];
+    const feedbackText = document.getElementById('feedback-text');
+    const correctAnswerDiv = document.getElementById('correct-answer');
+    const explanationDiv = document.getElementById('explanation-text');
+
+    if (answers[currentQuestionIndex]) {
+        feedbackText.innerHTML = answers[currentQuestionIndex] === q.correct_answer ? 'Correct!' : 'Wrong!';
+        feedback.classList.remove(answers[currentQuestionIndex] === q.correct_answer ? 'wrong' : 'correct');
+        feedback.classList.add(answers[currentQuestionIndex] === q.correct_answer ? 'correct' : 'wrong');
+    } else {
+        feedbackText.innerHTML = 'Not Answered';
+        feedback.classList.remove('correct', 'wrong');
+    }
+
+    if (q.type === 'QA') {
+        correctAnswerDiv.innerHTML = q.correct_answer;
+    } else {
+        correctAnswerDiv.innerHTML = `${q.correct_answer}: ${q[`option_${q.correct_answer.toLowerCase()}`]}`;
+    }
+    explanationDiv.innerHTML = q.explanation || 'No explanation provided.';
+    document.getElementById('answer-explanation').style.display = 'block';
+
+    MathJax.typesetPromise().catch(err => console.error('MathJax error:', err));
+}
+
+function nextQuestion() {
+    if (isExamMode && !isReviewMode) {
+        const lastQA = sectionIndices.QA + questions.filter(q => q.type === 'QA').length - 1;
+        const lastMCQ = sectionIndices.MCQ + questions.filter(q => q.type === 'MCQ').length - 1;
+        const lastVA = sectionIndices.VA + questions.filter(q => q.type === 'VA').length - 1;
+
+        if ((currentQuestionIndex === lastQA && currentSection === 'QA') || 
+            (currentQuestionIndex === lastMCQ && currentSection === 'MCQ') || 
+            (currentQuestionIndex === lastVA && currentSection === 'VA')) {
+            if (timeRemaining > 0) return; // Silent block, no popup
+            // Timer drives section completion
+        } else if (currentQuestionIndex < questions.length - 1) {
             const q = questions[currentQuestionIndex];
-            const userAnswer = document.getElementById('qa-input').value.trim();
-            const correctAnswer = q.correct_answer.trim();
-        
-            answers[currentQuestionIndex] = userAnswer;
-            skipped[currentQuestionIndex] = false;
-            const feedback = document.getElementById('feedback');
-            const feedbackText = document.getElementById('feedback-text');
-        
-            document.getElementById('qa-input').disabled = true;
-            document.getElementById('qa-submit-btn').disabled = true;
-        
-            if (userAnswer === correctAnswer) {
-                feedbackText.innerHTML = 'Correct!';
-                feedback.classList.remove('wrong');
-                feedback.classList.add('correct');
-            } else {
-                feedbackText.innerHTML = 'Wrong!';
-                feedback.classList.remove('correct');
-                feedback.classList.add('wrong');
-            }
-        
-            feedback.style.display = 'flex';
-            updateFeedbackAndExplanation();
-        
-            const timeSpent = Math.floor((Date.now() - questionStartTime) / 1000);
-            fetch(`/exam/${<%- JSON.stringify(module.id) %>}/save-answer`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ questionId: q.id, answer: userAnswer, time_spent: timeSpent })
-            }).then(response => response.json()).then(data => {
-                if (!data.success) console.error('Failed to save answer:', data.message);
-            }).catch(err => console.error('Save error:', err));
-        
-            updateGoToDropdown();
-        }
-        
-        function updateFeedbackAndExplanation() {
-            const q = questions[currentQuestionIndex];
-            const feedbackText = document.getElementById('feedback-text');
-            const correctAnswerDiv = document.getElementById('correct-answer');
-            const explanationDiv = document.getElementById('explanation-text');
-        
-            if (answers[currentQuestionIndex]) {
-                feedbackText.innerHTML = answers[currentQuestionIndex] === q.correct_answer ? 'Correct!' : 'Wrong!';
-                feedback.classList.remove(answers[currentQuestionIndex] === q.correct_answer ? 'wrong' : 'correct');
-                feedback.classList.add(answers[currentQuestionIndex] === q.correct_answer ? 'correct' : 'wrong');
-            } else {
-                feedbackText.innerHTML = 'Not Answered';
-                feedback.classList.remove('correct', 'wrong');
-            }
-        
             if (q.type === 'QA') {
-                correctAnswerDiv.innerHTML = q.correct_answer;
-            } else {
-                correctAnswerDiv.innerHTML = `${q.correct_answer}: ${q[`option_${q.correct_answer.toLowerCase()}`]}`;
-            }
-            explanationDiv.innerHTML = q.explanation || 'No explanation provided.';
-            document.getElementById('answer-explanation').style.display = 'block';
-        
-            MathJax.typesetPromise().catch(err => console.error('MathJax error:', err));
-        }
-        
-        function nextQuestion() {
-            if (isExamMode && !isReviewMode) {
-                const lastQA = sectionIndices.QA + questions.filter(q => q.type === 'QA').length - 1;
-                const lastMCQ = sectionIndices.MCQ + questions.filter(q => q.type === 'MCQ').length - 1;
-                const lastVA = sectionIndices.VA + questions.filter(q => q.type === 'VA').length - 1;
-        
-                if ((currentQuestionIndex === lastQA && currentSection === 'QA') || 
-                    (currentQuestionIndex === lastMCQ && currentSection === 'MCQ') || 
-                    (currentQuestionIndex === lastVA && currentSection === 'VA')) {
-                    if (timeRemaining > 0) return; // Silent block, no popup
-                    // Timer drives section completion
-                } else if (currentQuestionIndex < questions.length - 1) {
-                    const q = questions[currentQuestionIndex];
-                    if (q.type === 'QA') {
-                        const userAnswer = document.getElementById('qa-input').value.trim();
-                        if (userAnswer) saveAndProceed(userAnswer, q);
-                        else {
-                            currentQuestionIndex++;
-                            displayExamModeQuestion();
-                        }
-                    } else {
-                        currentQuestionIndex++;
-                        displayExamModeQuestion();
-                    }
-                }
-            } else if (isReviewMode) {
-                if (currentQuestionIndex < questions.length - 1) {
+                const userAnswer = document.getElementById('qa-input').value.trim();
+                if (userAnswer) saveAndProceed(userAnswer, q);
+                else {
                     currentQuestionIndex++;
-                    displayReviewModeQuestion();
-                } else {
-                    window.location.href = '/index';
+                    displayExamModeQuestion();
                 }
             } else {
-                const q = questions[currentQuestionIndex];
-                const userAnswer = q.type === 'QA' ? document.getElementById('qa-input').value.trim() : answers[currentQuestionIndex];
-                if (q.type === 'QA' && userAnswer && !answers[currentQuestionIndex]) {
-                    saveAndProceed(userAnswer, q);
-                } else if (currentQuestionIndex < questions.length - 1) {
-                    currentQuestionIndex++;
-                    displayNormalModeQuestion();
-                } else {
-                    window.location.href = '/index';
-                }
-            }
-        }
-        
-        function saveAndProceed(userAnswer, q) {
-            const timeSpent = Math.floor((Date.now() - questionStartTime) / 1000);
-            fetch(`/exam/${<%- JSON.stringify(module.id) %>}/save-answer`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ questionId: q.id, answer: userAnswer, time_spent: timeSpent })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    answers[currentQuestionIndex] = userAnswer;
-                    if (currentQuestionIndex < questions.length - 1) {
-                        currentQuestionIndex++;
-                        if (isExamMode && !isReviewMode) displayExamModeQuestion();
-                        else displayNormalModeQuestion();
-                    } else if (isExamMode && !isReviewMode) {
-                        completeExam();
-                    } else {
-                        window.location.href = '/index';
-                    }
-                } else {
-                    console.error('Failed to save:', data.message);
-                    alert('Failed to save your answer. Please try again.');
-                }
-            })
-            .catch(err => {
-                console.error('Save error:', err);
-                alert('Error saving answer. Check your connection.');
-            });
-        }
-        
-        function prevQuestion() {
-            if (isReviewMode && currentQuestionIndex > 0) {
-                currentQuestionIndex--;
-                displayReviewModeQuestion();
-            }
-        }
-        
-        function updateNavigationButtons() {
-            if (!isReviewMode) return;
-            document.getElementById('prev-btn').disabled = currentQuestionIndex === 0;
-            document.getElementById('next-btn').disabled = currentQuestionIndex === questions.length - 1;
-            if (currentQuestionIndex === questions.length - 1) {
-                document.getElementById('next-btn').innerHTML = 'Finish';
-            } else {
-                document.getElementById('next-btn').innerHTML = 'Next →';
-            }
-        }
-        
-        function skipQuestion() {
-            if (!isExamMode && !isReviewMode && currentQuestionIndex < questions.length - 1) {
-                if (!answers[currentQuestionIndex]) skipped[currentQuestionIndex] = true;
                 currentQuestionIndex++;
-                displayQuestion();
-                updateGoToDropdown();
+                displayExamModeQuestion();
             }
         }
-        
-        function completeSection() {
-            if (!isExamMode || isReviewMode) return;
-            clearInterval(timerInterval);
-        
-            if (currentSection === 'QA') {
-                currentSection = 'MCQ';
-                currentQuestionIndex = sectionIndices.MCQ;
-                timeRemaining = <%- JSON.stringify(module.time_limit || 2400) %>;
-                showSectionCompleteScreen('QA', 'MCQ');
-            } else if (currentSection === 'MCQ') {
-                currentSection = 'VA';
-                currentQuestionIndex = sectionIndices.VA;
-                timeRemaining = <%- JSON.stringify(module.time_limit || 2400) %>;
-                showSectionCompleteScreen('MCQ', 'VA');
-            } else if (currentSection === 'VA') {
-                completeExam(); // No VA banner, straight to finish
-            }
-        }
-        
-        function completeExam() {
-            if (!isExamMode || isReviewMode) return;
-            const sectionCounts = {
-                QA: questions.filter(q => q.type === 'QA').length,
-                MCQ: questions.filter(q => q.type === 'MCQ').length,
-                VA: questions.filter(q => q.type === 'VA').length
-            };
-            const totalTime = <%- JSON.stringify(module.time_limit || 2400) %>;
-            const timePerSection = totalTime;
-            const timeSpent = sectionStartTime ? Math.floor((Date.now() - sectionStartTime) / 1000) : totalTime;
-        
-            const answersWithTime = answers.map((answer, i) => {
-                const q = questions[i];
-                let sectionTimeSpent;
-                if (q.type === 'QA') sectionTimeSpent = i === sectionIndices.QA ? timePerSection - timeRemaining : timePerSection / sectionCounts.QA;
-                else if (q.type === 'MCQ') sectionTimeSpent = i === sectionIndices.MCQ ? timePerSection - timeRemaining : timePerSection / sectionCounts.MCQ;
-                else sectionTimeSpent = i === sectionIndices.VA ? timeSpent : timePerSection / sectionCounts.VA;
-                return { questionId: q.id, answer, time_spent: Math.round(sectionTimeSpent) || 0 };
-            });
-        
-            fetch(`/exam/${<%- JSON.stringify(module.id) %>}/complete`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ answers: answersWithTime })
-            }).then(response => {
-                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-                return response.json();
-            }).then(data => {
-                if (data.success) {
-                    examCompleted = true;
-                    window.location.href = `/exam/${<%- JSON.stringify(module.id) %>}/finish`; // Straight to exam-complete.ejs
-                } else {
-                    console.error('Server response:', data);
-                    alert('Failed to save exam answers: ' + data.message);
-                }
-            }).catch(err => {
-                console.error('Exam completion error:', err);
-                alert('Error saving exam: ' + err.message);
-            });
-        }
-        
-        function goHome() {
-            if (isExamMode && !examCompleted && !isReviewMode) return;
+    } else if (isReviewMode) {
+        if (currentQuestionIndex < questions.length - 1) {
+            currentQuestionIndex++;
+            displayReviewModeQuestion();
+        } else {
             window.location.href = '/index';
         }
-        
-        function toggleGoTo() {
-            const dropdown = document.getElementById('goto-dropdown');
-            if (dropdown.style.display === 'block') dropdown.style.display = 'none';
-            else {
-                updateGoToDropdown();
-                dropdown.style.display = 'block';
-            }
+    } else {
+        const q = questions[currentQuestionIndex];
+        const userAnswer = q.type === 'QA' ? document.getElementById('qa-input').value.trim() : answers[currentQuestionIndex];
+        if (q.type === 'QA' && userAnswer && !answers[currentQuestionIndex]) {
+            saveAndProceed(userAnswer, q);
+        } else if (currentQuestionIndex < questions.length - 1) {
+            currentQuestionIndex++;
+            displayNormalModeQuestion();
+        } else {
+            window.location.href = '/index';
         }
-        
-        function updateGoToDropdown() {
-            const dropdown = document.getElementById('goto-dropdown');
-            dropdown.innerHTML = '';
-        
-            if (isExamMode && !isReviewMode) {
-                const filteredQuestions = questions.filter(q => q.type === currentSection);
-                if (filteredQuestions.length > 0) {
-                    const section = document.createElement('div');
-                    section.className = 'goto-section';
-                    section.innerHTML = `<h3>${currentSection}</h3>`;
-                    filteredQuestions.forEach((q, index) => {
-                        const globalIndex = questions.indexOf(q);
-                        const item = document.createElement('div');
-                        item.className = 'goto-item';
-                        if (skipped[globalIndex]) item.className += ' skipped';
-                        item.innerHTML = `Question ${index + 1}${answers[globalIndex] ? ' ✓' : ''}`;
+    }
+}
+
+function saveAndProceed(userAnswer, q) {
+    const timeSpent = Math.floor((Date.now() - questionStartTime) / 1000);
+    fetch(`/exam/${<%- JSON.stringify(module.id) %>}/save-answer`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ questionId: q.id, answer: userAnswer, time_spent: timeSpent })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            answers[currentQuestionIndex] = userAnswer;
+            if (currentQuestionIndex < questions.length - 1) {
+                currentQuestionIndex++;
+                if (isExamMode && !isReviewMode) displayExamModeQuestion();
+                else displayNormalModeQuestion();
+            } else if (isExamMode && !isReviewMode) {
+                completeExam();
+            } else {
+                window.location.href = '/index';
+            }
+        } else {
+            console.error('Failed to save:', data.message);
+            alert('Failed to save your answer. Please try again.');
+        }
+    })
+    .catch(err => {
+        console.error('Save error:', err);
+        alert('Error saving answer. Check your connection.');
+    });
+}
+
+function prevQuestion() {
+    if (isReviewMode && currentQuestionIndex > 0) {
+        currentQuestionIndex--;
+        displayReviewModeQuestion();
+    }
+}
+
+function updateNavigationButtons() {
+    if (!isReviewMode) return;
+    document.getElementById('prev-btn').disabled = currentQuestionIndex === 0;
+    document.getElementById('next-btn').disabled = currentQuestionIndex === questions.length - 1;
+    if (currentQuestionIndex === questions.length - 1) {
+        document.getElementById('next-btn').innerHTML = 'Finish';
+    } else {
+        document.getElementById('next-btn').innerHTML = 'Next →';
+    }
+}
+
+function skipQuestion() {
+    if (!isExamMode && !isReviewMode && currentQuestionIndex < questions.length - 1) {
+        if (!answers[currentQuestionIndex]) {
+            skipped[currentQuestionIndex] = true;
+        }
+        currentQuestionIndex++;
+        displayQuestion();
+        updateGoToDropdown();
+    }
+}
+
+function completeSection() {
+    if (!isExamMode || isReviewMode) return;
+    clearInterval(timerInterval);
+
+    if (currentSection === 'QA') {
+        currentSection = 'MCQ';
+        currentQuestionIndex = sectionIndices.MCQ;
+        timeRemaining = <%- JSON.stringify(module.time_limit || 2400) %>;
+        showSectionCompleteScreen('QA', 'MCQ');
+    } else if (currentSection === 'MCQ') {
+        currentSection = 'VA';
+        currentQuestionIndex = sectionIndices.VA;
+        timeRemaining = <%- JSON.stringify(module.time_limit || 2400) %>;
+        showSectionCompleteScreen('MCQ', 'VA');
+    } else if (currentSection === 'VA') {
+        completeExam(); // No VA banner, straight to finish
+    }
+}
+
+function completeExam() {
+    if (!isExamMode || isReviewMode) return;
+    const sectionCounts = {
+        QA: questions.filter(q => q.type === 'QA').length,
+        MCQ: questions.filter(q => q.type === 'MCQ').length,
+        VA: questions.filter(q => q.type === 'VA').length
+    };
+    const totalTime = <%- JSON.stringify(module.time_limit || 2400) %>;
+    const timePerSection = totalTime;
+    const timeSpent = sectionStartTime ? Math.floor((Date.now() - sectionStartTime) / 1000) : totalTime;
+
+    const answersWithTime = answers.map((answer, i) => {
+        const q = questions[i];
+        let sectionTimeSpent;
+        if (q.type === 'QA') sectionTimeSpent = i === sectionIndices.QA ? timePerSection - timeRemaining : timePerSection / sectionCounts.QA;
+        else if (q.type === 'MCQ') sectionTimeSpent = i === sectionIndices.MCQ ? timePerSection - timeRemaining : timePerSection / sectionCounts.MCQ;
+        else sectionTimeSpent = i === sectionIndices.VA ? timeSpent : timePerSection / sectionCounts.VA;
+        return { questionId: q.id, answer, time_spent: Math.round(sectionTimeSpent) || 0 };
+    });
+
+    fetch(`/exam/${<%- JSON.stringify(module.id) %>}/complete`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ answers: answersWithTime })
+    }).then(response => {
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+        return response.json();
+    }).then(data => {
+        if (data.success) {
+            examCompleted = true;
+            window.location.href = `/exam/${<%- JSON.stringify(module.id) %>}/finish`; // Straight to exam-complete.ejs
+        } else {
+            console.error('Server response:', data);
+            alert('Failed to save exam answers: ' + data.message);
+        }
+    }).catch(err => {
+        console.error('Exam completion error:', err);
+        alert('Error saving exam: ' + err.message);
+    });
+}
+
+function goHome() {
+    if (isExamMode && !examCompleted && !isReviewMode) return;
+    window.location.href = '/index';
+}
+
+function toggleGoTo() {
+    const dropdown = document.getElementById('goto-dropdown');
+    if (dropdown.style.display === 'block') dropdown.style.display = 'none';
+    else {
+        updateGoToDropdown();
+        dropdown.style.display = 'block';
+    }
+}
+
+function updateGoToDropdown() {
+    const dropdown = document.getElementById('goto-dropdown');
+    dropdown.innerHTML = '';
+
+    if (isExamMode && !isReviewMode) {
+        const filteredQuestions = questions.filter(q => q.type === currentSection);
+        if (filteredQuestions.length > 0) {
+            const section = document.createElement('div');
+            section.className = 'goto-section';
+            section.innerHTML = `<h3>${currentSection}</h3>`;
+            filteredQuestions.forEach((q, index) => {
+                const globalIndex = questions.indexOf(q);
+                const item = document.createElement('div');
+                item.className = 'goto-item';
+                if (skipped[globalIndex]) item.className += ' skipped';
+                item.innerHTML = `Question ${index + 1}${answers[globalIndex] ? ' ✓' : ''}`;
+                item.onclick = () => {
+                    currentQuestionIndex = globalIndex;
+                    displayExamModeQuestion();
+                    dropdown.style.display = 'none';
+                };
+                section.appendChild(item);
+            });
+            dropdown.appendChild(section);
+        }
+    } else {
+        const types = ['QA', 'MCQ', 'VA'];
+        types.forEach(type => {
+            const filteredQuestions = questions.filter(q => q.type === type);
+            if (filteredQuestions.length > 0) {
+                const section = document.createElement('div');
+                section.className = 'goto-section';
+                section.innerHTML = `<h3>${type}</h3>`;
+                filteredQuestions.forEach((q, index) => {
+                    const globalIndex = questions.indexOf(q);
+                    const item = document.createElement('div');
+                    item.className = 'goto-item';
+                    if (skipped[globalIndex]) item.className += ' skipped';
+                    if (!isReviewMode && globalIndex > currentQuestionIndex) {
+                        item.className += ' disabled'; // Lock future questions in normal mode
+                    }
+                    item.innerHTML = `Question ${index + 1}${answers[globalIndex] ? ' ✓' : ''}`;
+                    // Only allow navigation up to currentQuestionIndex in normal mode
+                    if (isReviewMode || globalIndex <= currentQuestionIndex) {
                         item.onclick = () => {
                             currentQuestionIndex = globalIndex;
-                            displayExamModeQuestion();
+                            if (isReviewMode) displayReviewModeQuestion();
+                            else displayNormalModeQuestion();
                             dropdown.style.display = 'none';
                         };
-                        section.appendChild(item);
-                    });
-                    dropdown.appendChild(section);
-                }
-            } else {
-                const types = ['QA', 'MCQ', 'VA'];
-                types.forEach(type => {
-                    const filteredQuestions = questions.filter(q => q.type === type);
-                    if (filteredQuestions.length > 0) {
-                        const section = document.createElement('div');
-                        section.className = 'goto-section';
-                        section.innerHTML = `<h3>${type}</h3>`;
-                        filteredQuestions.forEach((q, index) => {
-                            const globalIndex = questions.indexOf(q);
-                            const item = document.createElement('div');
-                            item.className = 'goto-item';
-                            if (skipped[globalIndex]) item.className += ' skipped';
-                            item.innerHTML = `Question ${index + 1}${answers[globalIndex] ? ' ✓' : ''}`;
-                            item.onclick = () => {
-                                currentQuestionIndex = globalIndex;
-                                if (isReviewMode) displayReviewModeQuestion();
-                                else displayNormalModeQuestion();
-                                dropdown.style.display = 'none';
-                            };
-                            section.appendChild(item);
-                        });
-                        dropdown.appendChild(section);
                     }
+                    section.appendChild(item);
                 });
+                dropdown.appendChild(section);
             }
+        });
+    }
+}
+
+function startTimer() {
+    if (!isExamMode || isReviewMode) return;
+    document.getElementById('timer').style.display = 'block';
+    timerInterval = setInterval(() => {
+        timeRemaining--;
+        const minutes = Math.floor(timeRemaining / 60);
+        const seconds = timeRemaining % 60;
+        document.getElementById('timer').innerHTML = `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
+        if (timeRemaining <= 0) {
+            clearInterval(timerInterval);
+            completeSection();
         }
-        
-        function startTimer() {
-            if (!isExamMode || isReviewMode) return;
-            document.getElementById('timer').style.display = 'block';
-            timerInterval = setInterval(() => {
-                timeRemaining--;
-                const minutes = Math.floor(timeRemaining / 60);
-                const seconds = timeRemaining % 60;
-                document.getElementById('timer').innerHTML = `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
-                if (timeRemaining <= 0) {
-                    clearInterval(timerInterval);
-                    completeSection();
-                }
-            }, 1000);
-        }
-        
-        function showIntroScreen() {
-            if (!isExamMode || isReviewMode) return;
-            const introScreen = document.getElementById('intro-screen');
-            const qaCount = questions.filter(q => q.type === 'QA').length;
-            const mcqCount = questions.filter(q => q.type === 'MCQ').length;
-            const vaCount = questions.filter(q => q.type === 'VA').length;
-            introScreen.innerHTML = `
-                <h1>Exam Mode</h1>
-                <p>You are about to start an exam with ${qaCount + mcqCount + vaCount} questions across 3 sections:</p>
-                <p>- QA: ${qaCount} questions</p>
-                <p>- MCQ: ${mcqCount} questions</p>
-                <p>- VA: ${vaCount} questions</p>
-                <p>Each section has a ${timeLimit / 60}-minute time limit. You must wait until the timer ends to proceed.</p>
-                <button class="begin-btn" onclick="startSection('QA')">Begin</button>
-            `;
-            introScreen.style.display = 'block';
-            document.getElementById('question-text').style.display = 'none';
-            document.getElementById('va-question-box').style.display = 'none';
-            document.getElementById('options').style.display = 'none';
-            document.getElementById('qa-input-container').style.display = 'none';
-            document.getElementById('feedback').style.display = 'none';
-            document.getElementById('answer-explanation').style.display = 'none';
-            document.getElementById('next-btn').style.display = 'none';
-            document.getElementById('timer').style.display = 'none';
-        }
-        
-        function showSectionCompleteScreen(completedSection, nextSection) {
-            if (!isExamMode || isReviewMode) return;
-            const introScreen = document.getElementById('intro-screen');
-            const completedCount = questions.filter(q => q.type === completedSection).length;
-            const nextCount = questions.filter(q => q.type === nextSection).length;
-            introScreen.innerHTML = `
-                <h1>Section Complete: ${completedSection}</h1>
-                <p>You have completed ${completedCount} questions in ${completedSection}.</p>
-                <p>Next is ${nextSection} with ${nextCount} questions and ${timeLimit / 60} minutes.</p>
-                <button class="begin-btn" onclick="startSection('${nextSection}')">Continue</button>
-            `;
-            introScreen.style.display = 'block';
-            document.getElementById('question-text').style.display = 'none';
-            document.getElementById('va-question-box').style.display = 'none';
-            document.getElementById('options').style.display = 'none';
-            document.getElementById('qa-input-container').style.display = 'none';
-            document.getElementById('feedback').style.display = 'none';
-            document.getElementById('answer-explanation').style.display = 'none';
-            document.getElementById('next-btn').style.display = 'none';
-            document.getElementById('timer').style.display = 'none';
-        }
-        
-        function startSection(section) {
-            if (!isExamMode || isReviewMode) return;
-            currentSection = section;
-            currentQuestionIndex = sectionIndices[section];
-            timeRemaining = <%- JSON.stringify(module.time_limit || 2400) %>;
-            sectionStartTime = Date.now();
-            document.getElementById('intro-screen').style.display = 'none';
+    }, 1000);
+}
+
+function showIntroScreen() {
+    if (!isExamMode || isReviewMode) return;
+    const introScreen = document.getElementById('intro-screen');
+    const qaCount = questions.filter(q => q.type === 'QA').length;
+    const mcqCount = questions.filter(q => q.type === 'MCQ').length;
+    const vaCount = questions.filter(q => q.type === 'VA').length;
+    introScreen.innerHTML = `
+        <h1>Exam Mode</h1>
+        <p>You are about to start an exam with ${qaCount + mcqCount + vaCount} questions across 3 sections:</p>
+        <p>- QA: ${qaCount} questions</p>
+        <p>- MCQ: ${mcqCount} questions</p>
+        <p>- VA: ${vaCount} questions</p>
+        <p>Each section has a ${timeLimit / 60}-minute time limit. You must wait until the timer ends to proceed.</p>
+        <button class="begin-btn" onclick="startSection('QA')">Begin</button>
+    `;
+    introScreen.style.display = 'block';
+    document.getElementById('question-text').style.display = 'none';
+    document.getElementById('va-question-box').style.display = 'none';
+    document.getElementById('options').style.display = 'none';
+    document.getElementById('qa-input-container').style.display = 'none';
+    document.getElementById('feedback').style.display = 'none';
+    document.getElementById('answer-explanation').style.display = 'none';
+    document.getElementById('next-btn').style.display = 'none';
+    document.getElementById('timer').style.display = 'none';
+}
+
+function showSectionCompleteScreen(completedSection, nextSection) {
+    if (!isExamMode || isReviewMode) return;
+    const introScreen = document.getElementById('intro-screen');
+    const completedCount = questions.filter(q => q.type === completedSection).length;
+    const nextCount = questions.filter(q => q.type === nextSection).length;
+    introScreen.innerHTML = `
+        <h1>Section Complete: ${completedSection}</h1>
+        <p>You have completed ${completedCount} questions in ${completedSection}.</p>
+        <p>Next is ${nextSection} with ${nextCount} questions and ${timeLimit / 60} minutes.</p>
+        <button class="begin-btn" onclick="startSection('${nextSection}')">Continue</button>
+    `;
+    introScreen.style.display = 'block';
+    document.getElementById('question-text').style.display = 'none';
+    document.getElementById('va-question-box').style.display = 'none';
+    document.getElementById('options').style.display = 'none';
+    document.getElementById('qa-input-container').style.display = 'none';
+    document.getElementById('feedback').style.display = 'none';
+    document.getElementById('answer-explanation').style.display = 'none';
+    document.getElementById('next-btn').style.display = 'none';
+    document.getElementById('timer').style.display = 'none';
+}
+
+function startSection(section) {
+    if (!isExamMode || isReviewMode) return;
+    currentSection = section;
+    currentQuestionIndex = sectionIndices[section];
+    timeRemaining = <%- JSON.stringify(module.time_limit || 2400) %>;
+    sectionStartTime = Date.now();
+    document.getElementById('intro-screen').style.display = 'none';
+    startTimer();
+    displayExamModeQuestion();
+    disableBackNavigation();
+}
+
+window.addEventListener('load', () => {
+    if (isReviewMode) {
+        displayReviewModeQuestion();
+        enableBackNavigation();
+    } else if (isExamMode) {
+        const lastAnsweredIdx = answers.findLastIndex(a => a !== null);
+        if (lastAnsweredIdx === questions.length - 1) {
+            examCompleted = true;
+            window.location.href = `/exam/${<%- JSON.stringify(module.id) %>}/finish`;
+        } else if (lastAnsweredIdx >= 0) {
             startTimer();
             displayExamModeQuestion();
             disableBackNavigation();
+        } else {
+            showIntroScreen();
+            disableBackNavigation();
         }
-        
-        window.addEventListener('load', () => {
-            if (isReviewMode) {
-                displayReviewModeQuestion();
-                enableBackNavigation();
-            } else if (isExamMode) {
-                const lastAnsweredIdx = answers.findLastIndex(a => a !== null);
-                if (lastAnsweredIdx === questions.length - 1) {
-                    examCompleted = true;
-                    window.location.href = `/exam/${<%- JSON.stringify(module.id) %>}/finish`;
-                } else if (lastAnsweredIdx >= 0) {
-                    startTimer();
-                    displayExamModeQuestion();
-                    disableBackNavigation();
-                } else {
-                    showIntroScreen();
-                    disableBackNavigation();
-                }
-            } else {
-                displayNormalModeQuestion();
-                enableBackNavigation();
-            }
-            updateGoToDropdown();
-        });
-        
-        document.addEventListener('click', (event) => {
-            const dropdown = document.getElementById('goto-dropdown');
-            const gotoButton = document.querySelector('.nav-btn[onclick="toggleGoTo()"]');
-            if (dropdown.style.display === 'block' && !dropdown.contains(event.target) && !gotoButton.contains(event.target)) {
-                dropdown.style.display = 'none';
-            }
-        });
-        
-        if (!isReviewMode) {
-            setInterval(() => {
-                fetch('/keep-alive', {
-                    method: 'GET',
-                    credentials: 'include'
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (!data.success) console.warn('Keep-alive failed:', data.message);
-                })
-                .catch(err => console.error('Keep-alive error:', err));
-            }, 10 * 60 * 1000);
-        }
-        </script>
+    } else {
+        displayNormalModeQuestion();
+        enableBackNavigation();
+    }
+    updateGoToDropdown();
+});
+
+document.addEventListener('click', (event) => {
+    const dropdown = document.getElementById('goto-dropdown');
+    const gotoButton = document.querySelector('.nav-btn[onclick="toggleGoTo()"]');
+    if (dropdown.style.display === 'block' && !dropdown.contains(event.target) && !gotoButton.contains(event.target)) {
+        dropdown.style.display = 'none';
+    }
+});
+
+if (!isReviewMode) {
+    setInterval(() => {
+        fetch('/keep-alive', {
+            method: 'GET',
+            credentials: 'include'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (!data.success) console.warn('Keep-alive failed:', data.message);
+        })
+        .catch(err => console.error('Keep-alive error:', err));
+    }, 10 * 60 * 1000);
+}
+</script>
 </body>
 </html>
